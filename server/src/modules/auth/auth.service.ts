@@ -1,13 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import * as bcrypt from "bcrypt";
 
-import { UsersService } from '../users/users.service';
-import { RoleName } from '../users/enums/role-name.enum';
-import { User } from '../users/entities/user.entity';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { UsersService } from "../users/users.service";
+import { RoleName } from "../users/enums/role-name.enum";
+import { User } from "../users/entities/user.entity";
+import { RegisterDto } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { JwtPayload } from "./interfaces/jwt-payload.interface";
 
 export interface LoginResponse {
   access_token: string;
@@ -34,14 +34,17 @@ export class AuthService {
 
     // Use a generic message to avoid leaking whether the email exists
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordMatch = await bcrypt.compare(loginDto.password, user.password);
+    const passwordMatch = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
     if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
-
+    console.log("ROLES: ", user.roles);
     // Build the JWT payload — see jwt-payload.interface.ts for field definitions
     const payload: JwtPayload = {
       sub: user.id,

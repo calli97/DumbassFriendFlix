@@ -32,7 +32,7 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToMany(() => Role, (role) => role.users, { eager: true })
+  @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({
     name: 'user_roles',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },
