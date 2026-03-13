@@ -13,13 +13,14 @@
     "jsx": "react-jsx",
     "strict": true,
     "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
     "paths": {
       "@components/*": ["src/components/*"],
       "@pages/*": ["src/pages/*"],
       "@context/*": ["src/context/*"],
       "@hooks/*": ["src/hooks/*"],
       "@api/*": ["src/api/*"],
-      "@types/*": ["src/types/*"]
+      "@app-types/*": ["src/types/*"]
     }
   },
   "include": ["src"],
