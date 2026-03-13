@@ -1,0 +1,13 @@
+{
+  "name": "dumbassfriendflix",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "server:dev": "npm run dev --workspace=server",
+    "server:build": "npm run build --workspace=server",
+    "server:start": "npm run start:prod --workspace=server"
+  }
+}
