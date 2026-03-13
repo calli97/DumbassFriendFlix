@@ -7,8 +7,8 @@ import { RoleName } from '../../users/enums/role-name.enum';
  * update AuthService.login() accordingly.
  */
 export interface JwtPayload {
-  /** User UUID — mapped to the standard JWT "subject" claim */
-  sub: string;
+  /** User ID — mapped to the standard JWT "subject" claim */
+  sub: number;
   email: string;
   username: string;
   /** Role names at the time the token was issued */
@@ -20,7 +20,7 @@ export interface JwtPayload {
  * Mirrors JwtPayload but is the runtime type used in guards and decorators.
  */
 export interface AuthenticatedUser {
-  sub: string;
+  sub: number;
   email: string;
   username: string;
   roles: RoleName[];

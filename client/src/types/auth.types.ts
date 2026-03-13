@@ -6,7 +6,7 @@ export interface Role {
 }
 
 export interface User {
-  id: string;
+  id: number;
   username: string;
   email: string;
   createdAt: string;

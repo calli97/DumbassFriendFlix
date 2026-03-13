@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { User } from '../types/auth.types';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
+import { UserFormModal } from '../components/users/UserFormModal';
 import { ApiError } from '../api/client';
 
 function RoleBadge({ name }: { name: string }) {
@@ -13,9 +14,7 @@ function RoleBadge({ name }: { name: string }) {
     <span
       className={[
         'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-        isAdmin
-          ? 'bg-indigo-100 text-indigo-700'
-          : 'bg-slate-100 text-slate-600',
+        isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600',
       ].join(' ')}
     >
       {name}
@@ -26,9 +25,14 @@ function RoleBadge({ name }: { name: string }) {
 export function UsersPage() {
   const { logout, user: currentUser } = useAuth();
   const navigate = useNavigate();
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
 
   useEffect(() => {
     usersApi
@@ -45,15 +49,31 @@ export function UsersPage() {
     navigate('/', { replace: true });
   }
 
+  function openCreateModal() {
+    setEditingUser(undefined);
+    setModalOpen(true);
+  }
+
+  function openEditModal(user: User) {
+    setEditingUser(user);
+    setModalOpen(true);
+  }
+
+  function handleModalSuccess(saved: User) {
+    setUsers((prev) => {
+      const exists = prev.some((u) => u.id === saved.id);
+      // Update in place if editing, prepend if new
+      return exists ? prev.map((u) => (u.id === saved.id ? saved : u)) : [saved, ...prev];
+    });
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Navbar */}
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
         <span className="font-semibold text-indigo-600">DumbassFriendFlix</span>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-500">
-            {currentUser?.username}
-          </span>
+          <span className="text-sm text-slate-500">{currentUser?.username}</span>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             Sign Out
           </Button>
@@ -61,6 +81,7 @@ export function UsersPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-10">
+        {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Users</h1>
@@ -68,6 +89,9 @@ export function UsersPage() {
               {loading ? '—' : `${users.length} registered user${users.length !== 1 ? 's' : ''}`}
             </p>
           </div>
+          <Button onClick={openCreateModal} size="sm">
+            + New User
+          </Button>
         </div>
 
         {loading && (
@@ -93,7 +117,7 @@ export function UsersPage() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  {['Username', 'Email', 'Roles', 'Member since'].map((h) => (
+                  {['Username', 'Email', 'Roles', 'Member since', ''].map((h) => (
                     <th
                       key={h}
                       className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide"
@@ -109,9 +133,7 @@ export function UsersPage() {
                     <td className="px-5 py-3.5 text-sm font-medium text-slate-900">
                       {u.username}
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-slate-600">
-                      {u.email}
-                    </td>
+                    <td className="px-5 py-3.5 text-sm text-slate-600">{u.email}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
@@ -126,6 +148,15 @@ export function UsersPage() {
                         day: 'numeric',
                       })}
                     </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openEditModal(u)}
+                      >
+                        Edit
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -133,6 +164,13 @@ export function UsersPage() {
           </div>
         )}
       </main>
+
+      <UserFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        user={editingUser}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 }

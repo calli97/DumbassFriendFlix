@@ -57,7 +57,7 @@ export class AuthService {
     };
   }
 
-  getMe(userId: string): Promise<User> {
+  getMe(userId: number): Promise<User> {
     return this.usersService.findOne(userId);
   }
 }

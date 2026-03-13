@@ -4,7 +4,7 @@ export class CreateUserRolesTable1710000000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`user_roles\` (
-        \`user_id\` VARCHAR(36) NOT NULL,
+        \`user_id\` INT         NOT NULL,
         \`role_id\` INT         NOT NULL,
         PRIMARY KEY (\`user_id\`, \`role_id\`),
         CONSTRAINT \`FK_user_roles_user\`
