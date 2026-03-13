@@ -33,5 +33,14 @@ export const mediaApi = {
   },
 
   findAll: (): Promise<Media[]> =>
-    apiClient.get<Media[]>('/media'),
+    apiClient.get<Media[]>('/media/list'),
+
+  findOne: (id: number): Promise<Media> =>
+    apiClient.get<Media>(`/media/${id}`),
+
+  /** Returns a URL with the JWT token as a query param for use in <video src="..."> */
+  streamUrl: (id: number): string => {
+    const token = localStorage.getItem('access_token') ?? '';
+    return `${API_BASE}/media/${id}/stream?token=${encodeURIComponent(token)}`;
+  },
 };

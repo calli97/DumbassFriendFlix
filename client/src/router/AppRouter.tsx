@@ -5,6 +5,8 @@ import { AuthPage } from '../pages/AuthPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { UsersPage } from '../pages/UsersPage';
 import { MediaPage } from '../pages/MediaPage';
+import { VideoListPage } from '../pages/VideoListPage';
+import { VideoPlayerPage } from '../pages/VideoPlayerPage';
 
 function RootRedirect() {
   const { isAuthenticated, user } = useAuth();
@@ -12,7 +14,7 @@ function RootRedirect() {
   if (!isAuthenticated) return <AuthPage />;
 
   const isAdmin = user?.roles.some((r) => r.name === 'ADMIN') ?? false;
-  return <Navigate to={isAdmin ? '/users' : '/profile'} replace />;
+  return <Navigate to={isAdmin ? '/users' : '/videos'} replace />;
 }
 
 export function AppRouter() {
@@ -24,6 +26,8 @@ export function AppRouter() {
         {/* Any authenticated user */}
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/videos" element={<VideoListPage />} />
+          <Route path="/videos/:id" element={<VideoPlayerPage />} />
         </Route>
 
         {/* Admin-only */}

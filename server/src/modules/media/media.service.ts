@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Media } from './entities/media.entity';
@@ -22,5 +22,11 @@ export class MediaService {
 
   findAll(): Promise<Media[]> {
     return this.mediaRepository.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async findOne(id: number): Promise<Media> {
+    const media = await this.mediaRepository.findOne({ where: { id } });
+    if (!media) throw new NotFoundException(`Media with id "${id}" not found`);
+    return media;
   }
 }

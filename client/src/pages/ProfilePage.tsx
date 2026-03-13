@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { authApi } from '../api/auth.api';
-import { useAuth } from '../context/AuthContext';
 import { User } from '../types/auth.types';
-import { Button } from '../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../components/ui/Card';
 import { Spinner } from '../components/ui/Spinner';
 import { ApiError } from '../api/client';
-import { useNavigate } from 'react-router-dom';
+import { UserLayout } from '../components/layout/UserLayout';
 
 function Avatar({ username }: { username: string }) {
   const initials = username.slice(0, 2).toUpperCase();
@@ -29,8 +27,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export function ProfilePage() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,35 +41,22 @@ export function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  function handleLogout() {
-    logout();
-    navigate('/', { replace: true });
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Navbar */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-        <span className="font-semibold text-indigo-600">DumbassFriendFlix</span>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          Sign Out
-        </Button>
-      </header>
+    <UserLayout>
+      {loading && (
+        <div className="flex justify-center py-20">
+          <Spinner />
+        </div>
+      )}
 
-      <main className="max-w-lg mx-auto px-4 py-10">
-        {loading && (
-          <div className="flex justify-center py-20">
-            <Spinner />
-          </div>
-        )}
+      {error && (
+        <div className="px-4 py-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <div className="px-4 py-3 rounded-md bg-red-50 border border-red-200 text-red-600 text-sm">
-            {error}
-          </div>
-        )}
-
-        {user && (
+      {user && (
+        <div className="max-w-lg">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-4">
@@ -88,7 +71,7 @@ export function ProfilePage() {
             </CardHeader>
 
             <CardBody className="py-2">
-              <InfoRow label="User ID" value={user.id} />
+              <InfoRow label="User ID" value={String(user.id)} />
               <InfoRow
                 label="Roles"
                 value={user.roles.map((r) => r.name).join(', ')}
@@ -111,8 +94,8 @@ export function ProfilePage() {
               />
             </CardBody>
           </Card>
-        )}
-      </main>
-    </div>
+        </div>
+      )}
+    </UserLayout>
   );
 }
