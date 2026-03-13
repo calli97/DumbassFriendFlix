@@ -101,6 +101,12 @@ export class UsersService {
     await this.usersRepository.remove(user);
   }
 
+  // Used by AuthService to look up a user for login — password is in memory but
+  // excluded from HTTP responses by @Exclude() + ClassSerializerInterceptor
+  findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
+  }
+
   // Resolves role names to Role entities, throwing if any name is invalid
   private async resolveRoles(roleNames: RoleName[]): Promise<Role[]> {
     if (!roleNames.length) {
