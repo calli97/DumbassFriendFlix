@@ -19,7 +19,7 @@ export default defineConfig({
     // Proxy API requests to avoid CORS issues in development
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_BACKEND_URL ?? 'http://localhost:3000',
         changeOrigin: true,
       },
     },
