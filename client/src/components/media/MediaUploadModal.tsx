@@ -1,10 +1,23 @@
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useRef, useState, useCallback } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { mediaApi } from '../../api/media.api';
 import { Media } from '../../types/media.types';
 import { ApiError } from '../../api/client';
+
+function formatSpeed(bytesPerSec: number): string {
+  if (bytesPerSec <= 0) return '';
+  if (bytesPerSec >= 1_048_576) return `${(bytesPerSec / 1_048_576).toFixed(1)} MB/s`;
+  return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+}
+
+function formatTime(seconds: number): string {
+  if (seconds < 60) return `${Math.ceil(seconds)}s remaining`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.ceil(seconds % 60);
+  return `${m}m ${s}s remaining`;
+}
 
 const ALLOWED_EXTENSIONS = ['.mp4', '.mkv', '.avi'];
 const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.join(',');
@@ -21,15 +34,39 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
   const [fileError, setFileError] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastLoadedRef = useRef(0);
+  const lastTimeRef = useRef(0);
 
   function reset() {
     setTitle('');
     setFile(null);
     setFileError('');
     setError('');
+    setProgress(0);
+    setSpeed(0);
+    setTimeLeft(null);
+    lastLoadedRef.current = 0;
+    lastTimeRef.current = 0;
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
+
+  const handleProgress = useCallback((loaded: number, total: number) => {
+    const now = Date.now();
+    setProgress(total > 0 ? Math.round((loaded / total) * 100) : 0);
+
+    const elapsed = (now - lastTimeRef.current) / 1000;
+    if (elapsed >= 0.3) {
+      const currentSpeed = (loaded - lastLoadedRef.current) / elapsed;
+      setSpeed(currentSpeed);
+      if (currentSpeed > 0) setTimeLeft((total - loaded) / currentSpeed);
+      lastLoadedRef.current = loaded;
+      lastTimeRef.current = now;
+    }
+  }, []);
 
   function handleClose() {
     reset();
@@ -59,8 +96,10 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
     if (!file) { setFileError('Please select a video file'); return; }
 
     setLoading(true);
+    lastLoadedRef.current = 0;
+    lastTimeRef.current = Date.now();
     try {
-      const media = await mediaApi.upload(title.trim(), file);
+      const media = await mediaApi.upload(title.trim(), file, handleProgress);
       onSuccess(media);
       handleClose();
     } catch (err) {
@@ -130,6 +169,21 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
             <p className="text-xs text-red-500" role="alert">{fileError}</p>
           )}
         </div>
+
+        {loading && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>{formatSpeed(speed)}</span>
+              <span>{progress}%{timeLeft !== null ? ` · ${formatTime(timeLeft)}` : ''}</span>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={handleClose} disabled={loading}>
