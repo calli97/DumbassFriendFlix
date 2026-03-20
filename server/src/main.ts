@@ -46,6 +46,7 @@ function mountTusServer(app: any): void {
   const tusServer = new TusServer({
     path: TUS_PATH,
     datastore: new FileStore({ directory: storePath }),
+    exposedHeaders: ['X-Media-Id'],
 
     // req is a web-standard Request (ServerRequest extends Request), so use req.headers.get()
     onUploadCreate: async (req, upload) => {
