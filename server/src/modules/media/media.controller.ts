@@ -46,6 +46,26 @@ export class MediaController {
   }
 
   /**
+   * Serves a WebVTT subtitle file extracted from the original video.
+   * Uses QueryJwtAuthGuard so <track src="...?token=..."> works without custom headers.
+   */
+  @Get(':id/subtitles/:index')
+  @UseGuards(QueryJwtAuthGuard)
+  async streamSubtitle(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('index', ParseIntPipe) index: number,
+    @Res() res: Response,
+  ): Promise<void> {
+    const media = await this.mediaService.findOne(id);
+    const track = media.subtitleTracks?.find((t) => t.index === index);
+    if (!track) throw new NotFoundException('Subtitle track not found');
+    if (!existsSync(track.vttPath)) throw new NotFoundException('Subtitle file not found on disk');
+
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    createReadStream(track.vttPath).pipe(res);
+  }
+
+  /**
    * Streams a video file with HTTP Range support for seeking.
    * Uses QueryJwtAuthGuard so the browser can authenticate via
    * ?token= query param (HTML5 <video> cannot send custom headers).

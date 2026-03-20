@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Media } from './entities/media.entity';
+import { SubtitleTrack } from './subtitle-extractor';
 
 @Injectable()
 export class MediaService {
@@ -23,5 +24,9 @@ export class MediaService {
     const media = await this.mediaRepository.findOne({ where: { id } });
     if (!media) throw new NotFoundException(`Media with id "${id}" not found`);
     return media;
+  }
+
+  async updateSubtitleTracks(id: number, tracks: SubtitleTrack[]): Promise<void> {
+    await this.mediaRepository.update(id, { subtitleTracks: tracks });
   }
 }

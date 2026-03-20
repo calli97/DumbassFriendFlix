@@ -65,7 +65,17 @@ export function VideoPlayerPage() {
               controls
               autoPlay
               src={mediaApi.streamUrl(video.id)}
-            />
+            >
+              {video.subtitleTracks?.map((track) => (
+                <track
+                  key={track.index}
+                  kind="subtitles"
+                  src={mediaApi.subtitleUrl(video.id, track.index)}
+                  srcLang={track.language}
+                  label={track.label}
+                />
+              ))}
+            </video>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { SubtitleTrack } from '../subtitle-extractor';
 
 @Entity('media')
 export class Media {
@@ -17,6 +18,9 @@ export class Media {
 
   @Column({ name: 'mime_type', type: 'varchar', length: 100 })
   mimeType: string;
+
+  @Column({ name: 'subtitle_tracks', type: 'json', nullable: true })
+  subtitleTracks: SubtitleTrack[] | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

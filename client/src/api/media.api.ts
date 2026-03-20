@@ -64,4 +64,10 @@ export const mediaApi = {
     const token = localStorage.getItem('access_token') ?? '';
     return `${API_BASE}/media/${id}/stream?token=${encodeURIComponent(token)}`;
   },
+
+  /** Returns a URL for a subtitle .vtt track, authenticated via query param for use in <track src="..."> */
+  subtitleUrl: (id: number, trackIndex: number): string => {
+    const token = localStorage.getItem('access_token') ?? '';
+    return `${API_BASE}/media/${id}/subtitles/${trackIndex}?token=${encodeURIComponent(token)}`;
+  },
 };
