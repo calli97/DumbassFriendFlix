@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { unlink } from 'fs/promises';
+import { existsSync } from 'fs';
 import { Media } from './entities/media.entity';
 import { SubtitleTrack } from './subtitle-extractor';
 
@@ -28,5 +30,20 @@ export class MediaService {
 
   async updateSubtitleTracks(id: number, tracks: SubtitleTrack[]): Promise<void> {
     await this.mediaRepository.update(id, { subtitleTracks: tracks });
+  }
+
+  async remove(id: number): Promise<void> {
+    const media = await this.findOne(id);
+    await this.mediaRepository.delete(id);
+
+    // Delete the video file and the tus .info sidecar
+    for (const filePath of [media.path, `${media.path}.info`]) {
+      if (existsSync(filePath)) unlink(filePath).catch(() => undefined);
+    }
+
+    // Delete extracted subtitle .vtt files
+    for (const track of media.subtitleTracks ?? []) {
+      if (existsSync(track.vttPath)) unlink(track.vttPath).catch(() => undefined);
+    }
   }
 }

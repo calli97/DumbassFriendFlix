@@ -56,8 +56,14 @@ export const mediaApi = {
   findAll: (): Promise<Media[]> =>
     apiClient.get<Media[]>('/media/list'),
 
+  findAllAdmin: (): Promise<Media[]> =>
+    apiClient.get<Media[]>('/media'),
+
   findOne: (id: number): Promise<Media> =>
     apiClient.get<Media>(`/media/${id}`),
+
+  remove: (id: number): Promise<void> =>
+    apiClient.delete<void>(`/media/${id}`),
 
   /** Returns a URL with the JWT token as a query param for use in <video src="..."> */
   streamUrl: (id: number): string => {

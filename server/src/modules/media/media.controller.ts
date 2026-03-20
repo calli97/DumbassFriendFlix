@@ -1,8 +1,11 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   Headers,
+  HttpCode,
+  HttpStatus,
   UseGuards,
   NotFoundException,
   ParseIntPipe,
@@ -29,6 +32,14 @@ export class MediaController {
   @Roles(RoleName.ADMIN)
   findAll(): Promise<Media[]> {
     return this.mediaService.findAll();
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.mediaService.remove(id);
   }
 
   // ── Authenticated-user endpoints ──────────────────────────────────────────

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { mediaApi } from '../api/media.api';
 import { Media } from '../types/media.types';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { MediaUploadModal } from '../components/media/MediaUploadModal';
+import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { ApiError } from '../api/client';
@@ -17,14 +19,18 @@ function ExtBadge({ mimeType }: { mimeType: string }) {
 }
 
 export function MediaPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     mediaApi
-      .findAll()
+      .findAllAdmin()
       .then(setItems)
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : 'Failed to load media');
@@ -34,6 +40,21 @@ export function MediaPage() {
 
   function handleUploadSuccess(media: Media) {
     setItems((prev) => [media, ...prev]);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await mediaApi.remove(deleteTarget.id);
+      setItems((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : 'Failed to delete video');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -81,7 +102,7 @@ export function MediaPage() {
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
-                {['#', 'Title', 'File', 'Type', 'Uploaded'].map((h) => (
+                {['#', 'Title', 'File', 'Type', 'Uploaded', 'Actions'].map((h) => (
                   <th
                     key={h}
                     className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide"
@@ -113,6 +134,24 @@ export function MediaPage() {
                       day: 'numeric',
                     })}
                   </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/videos/${item.id}`)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => { setDeleteTarget(item); setDeleteError(''); }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -125,6 +164,44 @@ export function MediaPage() {
         onClose={() => setModalOpen(false)}
         onSuccess={handleUploadSuccess}
       />
+
+      <Modal
+        open={deleteTarget !== null}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        title="Delete Video"
+        maxWidth="max-w-sm"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-slate-600">
+            Are you sure you want to delete{' '}
+            <span className="font-medium text-slate-900">"{deleteTarget?.title}"</span>?
+            This will permanently remove the video file and cannot be undone.
+          </p>
+
+          {deleteError && (
+            <p className="text-xs text-red-500">{deleteError}</p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={deleting}
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   );
 }
