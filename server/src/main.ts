@@ -38,6 +38,8 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors();
+
   // Global route prefix
   app.setGlobalPrefix('api/v1');
 
