@@ -173,13 +173,21 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
         {loading && (
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between text-xs text-slate-500">
-              <span>{formatSpeed(speed)}</span>
-              <span>{progress}%{timeLeft !== null ? ` · ${formatTime(timeLeft)}` : ''}</span>
+              {progress === 0 ? (
+                <span className="text-slate-400">Connecting...</span>
+              ) : (
+                <>
+                  <span>{formatSpeed(speed)}</span>
+                  <span>{progress}%{timeLeft !== null ? ` · ${formatTime(timeLeft)}` : ''}</span>
+                </>
+              )}
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
+                className={progress === 0
+                  ? 'h-full w-full bg-indigo-300 rounded-full animate-pulse'
+                  : 'h-full bg-indigo-500 rounded-full transition-all duration-300'}
+                style={progress > 0 ? { width: `${progress}%` } : undefined}
               />
             </div>
           </div>

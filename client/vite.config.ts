@@ -21,6 +21,8 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_BACKEND_URL ?? 'http://localhost:3000',
         changeOrigin: true,
+        proxyTimeout: 3_600_000, // 1 hour — large video uploads can take a long time
+        timeout: 3_600_000,
       },
     },
   },
