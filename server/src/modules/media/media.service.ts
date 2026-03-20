@@ -10,13 +10,8 @@ export class MediaService {
     private readonly mediaRepository: Repository<Media>,
   ) {}
 
-  async create(title: string, file: Express.Multer.File): Promise<Media> {
-    const record = this.mediaRepository.create({
-      title,
-      path: file.path,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-    });
+  async createFromTus(title: string, filePath: string, originalName: string, mimeType: string): Promise<Media> {
+    const record = this.mediaRepository.create({ title, path: filePath, originalName, mimeType });
     return this.mediaRepository.save(record);
   }
 

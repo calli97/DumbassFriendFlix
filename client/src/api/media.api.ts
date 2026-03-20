@@ -1,3 +1,4 @@
+import * as tus from 'tus-js-client';
 import { apiClient, ApiError } from './client';
 import { Media } from '../types/media.types';
 
@@ -5,41 +6,52 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 export type UploadProgressCallback = (loaded: number, total: number) => void;
 
-// File uploads require multipart/form-data — XMLHttpRequest is used for progress tracking
-function uploadRequest(formData: FormData, onProgress?: UploadProgressCallback): Promise<Media> {
+function tusUpload(title: string, file: File, onProgress?: UploadProgressCallback): Promise<Media> {
   return new Promise((resolve, reject) => {
-    const token = localStorage.getItem('access_token');
-    const xhr = new XMLHttpRequest();
+    const token = localStorage.getItem('access_token') ?? '';
+    let capturedMediaId: number | null = null;
 
-    xhr.open('POST', `${API_BASE}/media/upload`);
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    const upload = new tus.Upload(file, {
+      endpoint: `${API_BASE}/media/tus`,
+      retryDelays: [0, 3_000, 5_000, 10_000, 20_000],
+      chunkSize: 10 * 1024 * 1024, // 10 MB chunks
+      metadata: {
+        filename: file.name,
+        filetype: file.type,
+        title,
+      },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      onProgress: (bytesUploaded, bytesTotal) => {
+        onProgress?.(bytesUploaded, bytesTotal);
+      },
+      onAfterResponse: (_req, res) => {
+        // The server sets X-Media-Id on the final PATCH response (onUploadFinish hook)
+        const id = res.getHeader('X-Media-Id');
+        if (id) capturedMediaId = parseInt(id, 10);
+      },
+      onSuccess: async () => {
+        if (capturedMediaId === null) {
+          reject(new ApiError(500, 'Upload succeeded but no media ID was returned'));
+          return;
+        }
+        try {
+          resolve(await apiClient.get<Media>(`/media/${capturedMediaId}`));
+        } catch (err) {
+          reject(err);
+        }
+      },
+      onError: (err) => reject(new ApiError(0, err.message ?? 'Upload failed')),
+    });
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress?.(e.loaded, e.total);
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText) as Media);
-      } else {
-        const body = JSON.parse(xhr.responseText || '{}');
-        reject(new ApiError(xhr.status, body.message ?? 'Upload failed'));
-      }
-    };
-
-    xhr.onerror = () => reject(new ApiError(0, 'Upload failed'));
-
-    xhr.send(formData);
+    upload.start();
   });
 }
 
 export const mediaApi = {
-  upload: (title: string, file: File, onProgress?: UploadProgressCallback): Promise<Media> => {
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('file', file);
-    return uploadRequest(formData, onProgress);
-  },
+  upload: (title: string, file: File, onProgress?: UploadProgressCallback): Promise<Media> =>
+    tusUpload(title, file, onProgress),
 
   findAll: (): Promise<Media[]> =>
     apiClient.get<Media[]>('/media/list'),
