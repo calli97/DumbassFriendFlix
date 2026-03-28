@@ -6,16 +6,17 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-} from '@nestjs/common';
-import { AuthService, LoginResponse } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { User } from '../users/entities/user.entity';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthenticatedUser } from './interfaces/jwt-payload.interface';
+} from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { AuthService, LoginResponse } from "./auth.service";
+import { RegisterDto } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { User } from "../users/entities/user.entity";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { AuthenticatedUser } from "./interfaces/jwt-payload.interface";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -25,13 +26,16 @@ export class AuthController {
   //   return this.authService.register(registerDto);
   // }
 
-  @Post('login')
+  // 5 attempts per minute per IP
+  @Post("login")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(loginDto);
   }
 
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: AuthenticatedUser): Promise<User> {
     return this.authService.getMe(user.sub);
