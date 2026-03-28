@@ -19,6 +19,9 @@ export class Media {
   @Column({ name: 'mime_type', type: 'varchar', length: 100 })
   mimeType: string;
 
+  @Column({ name: 'imdb_link', type: 'varchar', length: 255, nullable: true })
+  imdbLink: string | null;
+
   @Column({ name: 'subtitle_tracks', type: 'json', nullable: true })
   subtitleTracks: SubtitleTrack[] | null;
 
