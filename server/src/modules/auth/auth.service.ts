@@ -30,7 +30,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<LoginResponse> {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByUsername(loginDto.username);
 
     // Use a generic message to avoid leaking whether the email exists
     if (!user) {

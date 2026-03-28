@@ -127,6 +127,15 @@ export class UsersService {
     });
   }
 
+  findByUsername(username: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { username },
+      relations: {
+        roles: true,
+      },
+    });
+  }
+
   // Resolves role names to Role entities, throwing if any name is invalid
   private async resolveRoles(roleNames: RoleName[]): Promise<Role[]> {
     if (!roleNames.length) {

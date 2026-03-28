@@ -15,7 +15,7 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   // Register form state
@@ -38,7 +38,7 @@ export function AuthPage() {
 
     try {
       const { access_token, user } = await authApi.login({
-        email: loginEmail,
+        username: loginUsername,
         password: loginPassword,
       });
 
@@ -64,8 +64,8 @@ export function AuthPage() {
         email: regEmail,
         password: regPassword,
       });
-      // After successful registration, switch to login and pre-fill email
-      setLoginEmail(regEmail);
+      // After successful registration, switch to login and pre-fill username
+      setLoginUsername(regUsername);
       setLoginPassword('');
       switchTab('login');
     } catch (err) {
@@ -118,13 +118,13 @@ export function AuthPage() {
             {tab === 'login' ? (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 <Input
-                  label="Email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  label="Username"
+                  type="text"
+                  placeholder="johndoe"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                 />
                 <Input
                   label="Password"
