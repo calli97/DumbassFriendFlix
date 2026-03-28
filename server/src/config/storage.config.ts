@@ -1,15 +1,16 @@
-import { extname } from 'path';
-import { diskStorage } from 'multer';
-import { BadRequestException } from '@nestjs/common';
-import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
+import { extname } from "path";
+import { diskStorage } from "multer";
+import { BadRequestException } from "@nestjs/common";
+import { MulterOptions } from "@nestjs/platform-express/multer/interfaces/multer-options.interface";
 
-export const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi'];
+export const ALLOWED_VIDEO_EXTENSIONS = [".mp4", ".mkv", ".avi"];
 
 /**
  * Builds the Multer disk-storage options for video uploads.
  * @param storePath  Absolute path to the upload directory (validated at startup).
  */
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB ?? '4096', 10) * 1024 * 1024;
+const MAX_FILE_SIZE =
+  parseInt(process.env.MAX_FILE_SIZE_MB ?? "4096", 10) * 1024 * 1024;
 
 export function buildMulterOptions(storePath: string): MulterOptions {
   return {
@@ -28,7 +29,7 @@ export function buildMulterOptions(storePath: string): MulterOptions {
       if (!ALLOWED_VIDEO_EXTENSIONS.includes(ext)) {
         return cb(
           new BadRequestException(
-            `File type not supported. Allowed extensions: ${ALLOWED_VIDEO_EXTENSIONS.join(', ')}`,
+            `File type not supported. Allowed extensions: ${ALLOWED_VIDEO_EXTENSIONS.join(", ")}`,
           ),
           false,
         );
