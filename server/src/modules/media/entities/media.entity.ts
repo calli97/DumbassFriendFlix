@@ -3,7 +3,9 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  OneToMany,
 } from "typeorm";
+import { SubTrack } from "./sub-track.entity";
 
 @Entity("media")
 export class Media {
@@ -25,6 +27,12 @@ export class Media {
 
   @Column({ name: "imdb_link", type: "varchar", length: 255, nullable: true })
   imdbLink: string | null;
+
+  @OneToMany(() => SubTrack, (subTrack) => subTrack.media, {
+    cascade: true,
+    eager: true,
+  })
+  subTracks: SubTrack[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

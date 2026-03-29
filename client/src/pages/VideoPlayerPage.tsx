@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { mediaApi } from '../api/media.api';
-import { Media } from '../types/media.types';
-import { UserLayout } from '../components/layout/UserLayout';
-import { Button } from '../components/ui/Button';
-import { Spinner } from '../components/ui/Spinner';
-import { ApiError } from '../api/client';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { mediaApi } from "../api/media.api";
+import { Media } from "../types/media.types";
+import { UserLayout } from "../components/layout/UserLayout";
+import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
+import { ApiError } from "../api/client";
 
 export function VideoPlayerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [video, setVideo] = useState<Media | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -20,7 +20,7 @@ export function VideoPlayerPage() {
       .findOne(Number(id))
       .then(setVideo)
       .catch((err) => {
-        setError(err instanceof ApiError ? err.message : 'Failed to load video');
+        setError(err instanceof ApiError ? err.message : "Failed to load video");
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -28,7 +28,7 @@ export function VideoPlayerPage() {
   return (
     <UserLayout>
       <div className="mb-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/videos')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/videos")}>
           ← Back to Videos
         </Button>
       </div>
@@ -50,11 +50,11 @@ export function VideoPlayerPage() {
           <div className="px-6 py-4 border-b border-slate-100">
             <h1 className="text-xl font-bold text-slate-900">{video.title}</h1>
             <p className="text-sm text-slate-400 mt-0.5">
-              {video.mimeType} &middot;{' '}
-              {new Date(video.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
+              {video.mimeType} &middot;{" "}
+              {new Date(video.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </p>
           </div>
@@ -66,13 +66,12 @@ export function VideoPlayerPage() {
               autoPlay
               src={mediaApi.streamUrl(video.id)}
             >
-              {video.subtitleTracks?.map((track) => (
+              {video.subTracks?.map((track) => (
                 <track
-                  key={track.index}
+                  key={track.id}
                   kind="subtitles"
-                  src={mediaApi.subtitleUrl(video.id, track.index)}
-                  srcLang={track.language}
-                  label={track.label}
+                  src={mediaApi.subTrackUrl(video.id, track.id)}
+                  label={track.name}
                 />
               ))}
             </video>

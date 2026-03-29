@@ -1,14 +1,15 @@
-import { FormEvent, useRef, useState, useCallback } from 'react';
-import { Modal } from '../ui/Modal';
-import { Input } from '../ui/Input';
-import { Button } from '../ui/Button';
-import { mediaApi } from '../../api/media.api';
-import { Media } from '../../types/media.types';
-import { ApiError } from '../../api/client';
+import { FormEvent, useRef, useState, useCallback } from "react";
+import { Modal } from "../ui/Modal";
+import { Input } from "../ui/Input";
+import { Button } from "../ui/Button";
+import { mediaApi } from "../../api/media.api";
+import { Media } from "../../types/media.types";
+import { ApiError } from "../../api/client";
 
 function formatSpeed(bytesPerSec: number): string {
-  if (bytesPerSec <= 0) return '';
-  if (bytesPerSec >= 1_048_576) return `${(bytesPerSec / 1_048_576).toFixed(1)} MB/s`;
+  if (bytesPerSec <= 0) return "";
+  if (bytesPerSec >= 1_048_576)
+    return `${(bytesPerSec / 1_048_576).toFixed(1)} MB/s`;
   return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
 }
 
@@ -19,8 +20,14 @@ function formatTime(seconds: number): string {
   return `${m}m ${s}s remaining`;
 }
 
-const ALLOWED_EXTENSIONS = ['.mp4', '.mkv', '.avi'];
-const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.join(',');
+const ALLOWED_EXTENSIONS = [".mp4", ".mkv", ".avi"];
+const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.join(",");
+
+interface SubTrackInput {
+  name: string;
+  file: File | null;
+  fileError: string;
+}
 
 interface MediaUploadModalProps {
   open: boolean;
@@ -28,30 +35,38 @@ interface MediaUploadModalProps {
   onSuccess: (media: Media) => void;
 }
 
-export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalProps) {
-  const [title, setTitle] = useState('');
+export function MediaUploadModal({
+  open,
+  onClose,
+  onSuccess,
+}: MediaUploadModalProps) {
+  const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState('');
-  const [error, setError] = useState('');
+  const [fileError, setFileError] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<"video" | "subtracks">("video");
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [subTrackInputs, setSubTrackInputs] = useState<SubTrackInput[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastLoadedRef = useRef(0);
   const lastTimeRef = useRef(0);
 
   function reset() {
-    setTitle('');
+    setTitle("");
     setFile(null);
-    setFileError('');
-    setError('');
+    setFileError("");
+    setError("");
     setProgress(0);
     setSpeed(0);
     setTimeLeft(null);
+    setPhase("video");
+    setSubTrackInputs([]);
     lastLoadedRef.current = 0;
     lastTimeRef.current = 0;
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   const handleProgress = useCallback((loaded: number, total: number) => {
@@ -74,36 +89,100 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFileError('');
+    setFileError("");
     const selected = e.target.files?.[0] ?? null;
-    if (!selected) { setFile(null); return; }
-
-    const ext = selected.name.substring(selected.name.lastIndexOf('.')).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      setFileError(`Only ${ALLOWED_EXTENSIONS.join(', ')} files are allowed`);
+    if (!selected) {
       setFile(null);
-      e.target.value = '';
+      return;
+    }
+
+    const ext = selected.name
+      .substring(selected.name.lastIndexOf("."))
+      .toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setFileError(`Only ${ALLOWED_EXTENSIONS.join(", ")} files are allowed`);
+      setFile(null);
+      e.target.value = "";
       return;
     }
 
     setFile(selected);
   }
 
+  function addSubTrack() {
+    setSubTrackInputs((prev) => [
+      ...prev,
+      { name: "", file: null, fileError: "" },
+    ]);
+  }
+
+  function removeSubTrack(index: number) {
+    setSubTrackInputs((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateSubTrackName(index: number, name: string) {
+    setSubTrackInputs((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, name } : t)),
+    );
+  }
+
+  function handleSubTrackFileChange(
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const selected = e.target.files?.[0] ?? null;
+    setSubTrackInputs((prev) =>
+      prev.map((t, i) =>
+        i === index
+          ? { ...t, file: selected, fileError: selected ? "" : t.fileError }
+          : t,
+      ),
+    );
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
 
-    if (!file) { setFileError('Please select a video file'); return; }
+    if (!file) {
+      setFileError("Please select a video file");
+      return;
+    }
+
+    for (const track of subTrackInputs) {
+      if (!track.name.trim()) {
+        setError("All subtitle tracks must have a name");
+        return;
+      }
+      if (!track.file) {
+        setError("All subtitle tracks must have a file selected");
+        return;
+      }
+    }
 
     setLoading(true);
     lastLoadedRef.current = 0;
     lastTimeRef.current = Date.now();
+
     try {
+      setPhase("video");
       const media = await mediaApi.upload(title.trim(), file, handleProgress);
-      onSuccess(media);
+
+      if (subTrackInputs.length > 0) {
+        setPhase("subtracks");
+        for (const track of subTrackInputs) {
+          await mediaApi.uploadSubTrack(media.id, track.name.trim(), track.file!);
+        }
+        // Re-fetch to get the updated subTracks list
+        const updated = await mediaApi.findOne(media.id);
+        onSuccess(updated);
+      } else {
+        onSuccess(media);
+      }
+
       handleClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+      setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -127,34 +206,49 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
           maxLength={255}
         />
 
-        {/* File picker */}
+        {/* Video file picker */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">Video File</label>
+          <label className="text-sm font-medium text-slate-700">
+            Video File
+          </label>
 
           <label
             className={[
-              'flex flex-col items-center justify-center gap-2 w-full rounded-md border-2 border-dashed px-4 py-8 cursor-pointer transition-colors duration-150',
+              "flex flex-col items-center justify-center gap-2 w-full rounded-md border-2 border-dashed px-4 py-8 cursor-pointer transition-colors duration-150",
               fileError
-                ? 'border-red-300 bg-red-50'
+                ? "border-red-300 bg-red-50"
                 : file
-                  ? 'border-indigo-400 bg-indigo-50'
-                  : 'border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50',
-            ].join(' ')}
+                  ? "border-indigo-400 bg-indigo-50"
+                  : "border-slate-300 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50",
+            ].join(" ")}
           >
-            <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            <svg
+              className="h-8 w-8 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+              />
             </svg>
 
             {file ? (
-              <span className="text-sm font-medium text-indigo-700">{file.name}</span>
+              <span className="text-sm font-medium text-indigo-700">
+                {file.name}
+              </span>
             ) : (
               <span className="text-sm text-slate-500">
                 Click to select or drag a file here
               </span>
             )}
 
-            <span className="text-xs text-slate-400">{ALLOWED_EXTENSIONS.join(' · ')}</span>
+            <span className="text-xs text-slate-400">
+              {ALLOWED_EXTENSIONS.join(" · ")}
+            </span>
 
             <input
               ref={fileInputRef}
@@ -166,35 +260,139 @@ export function MediaUploadModal({ open, onClose, onSuccess }: MediaUploadModalP
           </label>
 
           {fileError && (
-            <p className="text-xs text-red-500" role="alert">{fileError}</p>
+            <p className="text-xs text-red-500" role="alert">
+              {fileError}
+            </p>
           )}
+        </div>
+
+        {/* Subtitle tracks */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">
+              Subtitle Tracks
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addSubTrack}
+              disabled={loading}
+            >
+              + Add Track
+            </Button>
+          </div>
+
+          {subTrackInputs.map((track, index) => (
+            <div
+              key={index}
+              className="flex flex-col gap-2 p-3 rounded-md border border-slate-200 bg-slate-50"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-500">
+                  Track {index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeSubTrack(index)}
+                  disabled={loading}
+                  className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <Input
+                label="Name"
+                value={track.name}
+                onChange={(e) => updateSubTrackName(index, e.target.value)}
+                placeholder="English, Español, etc."
+                required
+                maxLength={255}
+              />
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-slate-700">
+                  File
+                </label>
+                <label
+                  className={[
+                    "flex items-center gap-2 w-full rounded-md border border-dashed px-3 py-2.5 cursor-pointer text-sm transition-colors duration-150",
+                    track.file
+                      ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                      : "border-slate-300 bg-white text-slate-500 hover:border-indigo-400 hover:bg-indigo-50",
+                  ].join(" ")}
+                >
+                  <svg
+                    className="h-4 w-4 shrink-0 text-slate-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"
+                    />
+                  </svg>
+                  <span className="truncate">
+                    {track.file ? track.file.name : "Click to select subtitle file"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".vtt,.srt,.ass"
+                    onChange={(e) => handleSubTrackFileChange(index, e)}
+                    className="sr-only"
+                    disabled={loading}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
         </div>
 
         {loading && (
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between text-xs text-slate-500">
-              {progress === 0 ? (
+              {phase === "subtracks" ? (
+                <span className="text-slate-400">Uploading subtitle tracks...</span>
+              ) : progress === 0 ? (
                 <span className="text-slate-400">Connecting...</span>
               ) : (
                 <>
                   <span>{formatSpeed(speed)}</span>
-                  <span>{progress}%{timeLeft !== null ? ` · ${formatTime(timeLeft)}` : ''}</span>
+                  <span>
+                    {progress}%
+                    {timeLeft !== null ? ` · ${formatTime(timeLeft)}` : ""}
+                  </span>
                 </>
               )}
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className={progress === 0
-                  ? 'h-full w-full bg-indigo-300 rounded-full animate-pulse'
-                  : 'h-full bg-indigo-500 rounded-full transition-all duration-300'}
-                style={progress > 0 ? { width: `${progress}%` } : undefined}
+                className={
+                  phase === "subtracks" || progress === 0
+                    ? "h-full w-full bg-indigo-300 rounded-full animate-pulse"
+                    : "h-full bg-indigo-500 rounded-full transition-all duration-300"
+                }
+                style={
+                  phase === "video" && progress > 0
+                    ? { width: `${progress}%` }
+                    : undefined
+                }
               />
             </div>
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={handleClose} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button type="submit" loading={loading}>

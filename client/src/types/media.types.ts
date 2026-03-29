@@ -1,7 +1,8 @@
-export interface SubtitleTrack {
-  index: number;
-  language: string;
-  label: string;
+export interface SubTrack {
+  id: number;
+  name: string;
+  path: string;
+  mediaId: number;
 }
 
 export interface Media {
@@ -10,6 +11,7 @@ export interface Media {
   path: string;
   originalName: string;
   mimeType: string;
-  subtitleTracks: SubtitleTrack[] | null;
+  imdbLink: string | null;
+  subTracks: SubTrack[];
   createdAt: string;
 }
