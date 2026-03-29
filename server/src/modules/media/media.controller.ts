@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream, existsSync, statSync } from 'fs';
+
 import { MediaService } from './media.service';
 import { Media } from './entities/media.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -54,26 +55,6 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number): Promise<Media> {
     return this.mediaService.findOne(id);
-  }
-
-  /**
-   * Serves a WebVTT subtitle file extracted from the original video.
-   * Uses QueryJwtAuthGuard so <track src="...?token=..."> works without custom headers.
-   */
-  @Get(':id/subtitles/:index')
-  @UseGuards(QueryJwtAuthGuard)
-  async streamSubtitle(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('index', ParseIntPipe) index: number,
-    @Res() res: Response,
-  ): Promise<void> {
-    const media = await this.mediaService.findOne(id);
-    const track = media.subtitleTracks?.find((t) => t.index === index);
-    if (!track) throw new NotFoundException('Subtitle track not found');
-    if (!existsSync(track.vttPath)) throw new NotFoundException('Subtitle file not found on disk');
-
-    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
-    createReadStream(track.vttPath).pipe(res);
   }
 
   /**

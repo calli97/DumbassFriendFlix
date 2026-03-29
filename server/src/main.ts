@@ -11,7 +11,6 @@ import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { MediaService } from './modules/media/media.service';
 import { RoleName } from './modules/users/enums/role-name.enum';
-import { extractAllSubtitles } from './modules/media/subtitle-extractor';
 
 function validateStoragePath(): void {
   const storePath = process.env.STORE_PATH;
@@ -79,13 +78,6 @@ function mountTusServer(app: any): void {
       const filePath = path.join(storePath, upload.id);
 
       const media = await mediaService.createFromTus(title, filePath, originalName, mimeType);
-
-      // Extract subtitle tracks in the background — never block the upload response
-      extractAllSubtitles(filePath, storePath, upload.id)
-        .then((tracks) => {
-          if (tracks.length > 0) return mediaService.updateSubtitleTracks(media.id, tracks);
-        })
-        .catch((err) => console.error('[Subtitles] Unexpected error during extraction:', err));
 
       return { headers: { 'X-Media-Id': String(media.id) } };
     },
