@@ -23,12 +23,6 @@ function formatTime(seconds: number): string {
 const ALLOWED_EXTENSIONS = [".mp4", ".mkv", ".avi"];
 const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.join(",");
 
-interface SubTrackInput {
-  name: string;
-  file: File | null;
-  fileError: string;
-}
-
 interface MediaUploadModalProps {
   open: boolean;
   onClose: () => void;
@@ -45,11 +39,9 @@ export function MediaUploadModal({
   const [fileError, setFileError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [phase, setPhase] = useState<"video" | "subtracks">("video");
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [subTrackInputs, setSubTrackInputs] = useState<SubTrackInput[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastLoadedRef = useRef(0);
   const lastTimeRef = useRef(0);
@@ -62,8 +54,6 @@ export function MediaUploadModal({
     setProgress(0);
     setSpeed(0);
     setTimeLeft(null);
-    setPhase("video");
-    setSubTrackInputs([]);
     lastLoadedRef.current = 0;
     lastTimeRef.current = 0;
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -109,37 +99,6 @@ export function MediaUploadModal({
     setFile(selected);
   }
 
-  function addSubTrack() {
-    setSubTrackInputs((prev) => [
-      ...prev,
-      { name: "", file: null, fileError: "" },
-    ]);
-  }
-
-  function removeSubTrack(index: number) {
-    setSubTrackInputs((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateSubTrackName(index: number, name: string) {
-    setSubTrackInputs((prev) =>
-      prev.map((t, i) => (i === index ? { ...t, name } : t)),
-    );
-  }
-
-  function handleSubTrackFileChange(
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const selected = e.target.files?.[0] ?? null;
-    setSubTrackInputs((prev) =>
-      prev.map((t, i) =>
-        i === index
-          ? { ...t, file: selected, fileError: selected ? "" : t.fileError }
-          : t,
-      ),
-    );
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -149,37 +108,13 @@ export function MediaUploadModal({
       return;
     }
 
-    for (const track of subTrackInputs) {
-      if (!track.name.trim()) {
-        setError("All subtitle tracks must have a name");
-        return;
-      }
-      if (!track.file) {
-        setError("All subtitle tracks must have a file selected");
-        return;
-      }
-    }
-
     setLoading(true);
     lastLoadedRef.current = 0;
     lastTimeRef.current = Date.now();
 
     try {
-      setPhase("video");
       const media = await mediaApi.upload(title.trim(), file, handleProgress);
-
-      if (subTrackInputs.length > 0) {
-        setPhase("subtracks");
-        for (const track of subTrackInputs) {
-          await mediaApi.uploadSubTrack(media.id, track.name.trim(), track.file!);
-        }
-        // Re-fetch to get the updated subTracks list
-        const updated = await mediaApi.findOne(media.id);
-        onSuccess(updated);
-      } else {
-        onSuccess(media);
-      }
-
+      onSuccess(media);
       handleClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -266,98 +201,10 @@ export function MediaUploadModal({
           )}
         </div>
 
-        {/* Subtitle tracks */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">
-              Subtitle Tracks
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={addSubTrack}
-              disabled={loading}
-            >
-              + Add Track
-            </Button>
-          </div>
-
-          {subTrackInputs.map((track, index) => (
-            <div
-              key={index}
-              className="flex flex-col gap-2 p-3 rounded-md border border-slate-200 bg-slate-50"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-500">
-                  Track {index + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeSubTrack(index)}
-                  disabled={loading}
-                  className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
-                >
-                  Remove
-                </button>
-              </div>
-
-              <Input
-                label="Name"
-                value={track.name}
-                onChange={(e) => updateSubTrackName(index, e.target.value)}
-                placeholder="English, Español, etc."
-                required
-                maxLength={255}
-              />
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-700">
-                  File
-                </label>
-                <label
-                  className={[
-                    "flex items-center gap-2 w-full rounded-md border border-dashed px-3 py-2.5 cursor-pointer text-sm transition-colors duration-150",
-                    track.file
-                      ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-                      : "border-slate-300 bg-white text-slate-500 hover:border-indigo-400 hover:bg-indigo-50",
-                  ].join(" ")}
-                >
-                  <svg
-                    className="h-4 w-4 shrink-0 text-slate-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"
-                    />
-                  </svg>
-                  <span className="truncate">
-                    {track.file ? track.file.name : "Click to select subtitle file"}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".vtt,.srt,.ass"
-                    onChange={(e) => handleSubTrackFileChange(index, e)}
-                    className="sr-only"
-                    disabled={loading}
-                  />
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {loading && (
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between text-xs text-slate-500">
-              {phase === "subtracks" ? (
-                <span className="text-slate-400">Uploading subtitle tracks...</span>
-              ) : progress === 0 ? (
+              {progress === 0 ? (
                 <span className="text-slate-400">Connecting...</span>
               ) : (
                 <>
@@ -372,15 +219,11 @@ export function MediaUploadModal({
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
                 className={
-                  phase === "subtracks" || progress === 0
+                  progress === 0
                     ? "h-full w-full bg-indigo-300 rounded-full animate-pulse"
                     : "h-full bg-indigo-500 rounded-full transition-all duration-300"
                 }
-                style={
-                  phase === "video" && progress > 0
-                    ? { width: `${progress}%` }
-                    : undefined
-                }
+                style={progress > 0 ? { width: `${progress}%` } : undefined}
               />
             </div>
           </div>

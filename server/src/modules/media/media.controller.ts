@@ -3,25 +3,18 @@ import {
   Delete,
   Get,
   Param,
-  Post,
-  Body,
   Headers,
   HttpCode,
   HttpStatus,
   UseGuards,
-  UseInterceptors,
-  UploadedFile,
   NotFoundException,
   ParseIntPipe,
   Res,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { memoryStorage } from "multer";
 import { Response } from "express";
 import { createReadStream, existsSync, statSync } from "fs";
 import { MediaService } from "./media.service";
 import { Media } from "./entities/media.entity";
-import { SubTrack } from "./entities/sub-track.entity";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { QueryJwtAuthGuard } from "../../common/guards/query-jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
@@ -49,29 +42,6 @@ export class MediaController {
     return this.mediaService.remove(id);
   }
 
-  @Post(":id/subtracks")
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.ADMIN)
-  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage() }))
-  addSubTrack(
-    @Param("id", ParseIntPipe) id: number,
-    @Body("name") name: string,
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<SubTrack> {
-    return this.mediaService.createSubTrack(id, name, file);
-  }
-
-  @Delete(":id/subtracks/:trackId")
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeSubTrack(
-    @Param("id", ParseIntPipe) id: number,
-    @Param("trackId", ParseIntPipe) trackId: number,
-  ): Promise<void> {
-    return this.mediaService.removeSubTrack(id, trackId);
-  }
-
   // ── Authenticated-user endpoints ──────────────────────────────────────────
 
   @Get("list")
@@ -84,30 +54,6 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   findOne(@Param("id", ParseIntPipe) id: number): Promise<Media> {
     return this.mediaService.findOne(id);
-  }
-
-  /**
-   * Streams a subtitle file for a given subtrack.
-   * Uses QueryJwtAuthGuard so <track src="...?token=..."> works without custom headers.
-   */
-  @Get(":id/subtracks/:trackId/stream")
-  @UseGuards(QueryJwtAuthGuard)
-  async streamSubTrack(
-    @Param("id", ParseIntPipe) id: number,
-    @Param("trackId", ParseIntPipe) trackId: number,
-    @Res() res: Response,
-  ): Promise<void> {
-    const track = await this.mediaService.findSubTrack(id, trackId);
-    if (!existsSync(track.path)) throw new NotFoundException("Subtitle file not found on disk");
-
-    const ext = track.path.split(".").pop()?.toLowerCase();
-    const contentType =
-      ext === "vtt" ? "text/vtt" :
-      ext === "srt" || ext === "ass" ? "text/plain" :
-      "application/octet-stream";
-
-    res.setHeader("Content-Type", `${contentType}; charset=utf-8`);
-    createReadStream(track.path).pipe(res);
   }
 
   /**
