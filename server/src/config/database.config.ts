@@ -15,8 +15,8 @@ export function buildDatabaseConfig(
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     // Resolve migration files from both source and compiled output
     migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
-    synchronize: configService.get<string>('NODE_ENV') !== 'production',
-    migrationsRun: configService.get<string>('NODE_ENV') === 'production',
+    synchronize: true,
+    migrationsRun: false,
     logging: configService.get<string>('NODE_ENV') === 'development',
   };
 }
