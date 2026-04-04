@@ -99,7 +99,18 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({
     origin: '*',
-    // Expose tus protocol headers and the custom media-id header to the browser
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Upload-Length',
+      'Upload-Offset',
+      'Upload-Metadata',
+      'Upload-Defer-Length',
+      'Upload-Concat',
+      'Tus-Resumable',
+      'X-Requested-With',
+    ],
     exposedHeaders: [
       'X-Media-Id',
       'Location',
