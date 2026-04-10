@@ -58,6 +58,7 @@ export function VideoListPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 font-medium text-slate-500">Title</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-500">IMDB</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500">Type</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500">Uploaded</th>
                 <th className="px-4 py-3" />
@@ -70,6 +71,20 @@ export function VideoListPage() {
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
                 >
                   <td className="px-4 py-3 font-medium text-slate-800">{video.title}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {video.imdbLink ? (
+                      <a
+                        href={video.imdbLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        IMDB ↗
+                      </a>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <MimeBadge mimeType={video.mimeType} />
                   </td>
