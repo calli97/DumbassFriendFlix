@@ -24,9 +24,18 @@ export function MediaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Delete
   const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Edit
+  const [editTarget, setEditTarget] = useState<Media | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editImdbLink, setEditImdbLink] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     mediaApi
@@ -40,6 +49,31 @@ export function MediaPage() {
 
   function handleUploadSuccess(media: Media) {
     setItems((prev) => [media, ...prev]);
+  }
+
+  function openEdit(item: Media) {
+    setEditTarget(item);
+    setEditTitle(item.title);
+    setEditImdbLink(item.imdbLink ?? '');
+    setSaveError('');
+  }
+
+  async function handleEditSave() {
+    if (!editTarget) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const updated = await mediaApi.update(editTarget.id, {
+        title: editTitle.trim() || undefined,
+        imdbLink: editImdbLink.trim() || null,
+      });
+      setItems((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      setEditTarget(null);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDeleteConfirm() {
@@ -118,8 +152,18 @@ export function MediaPage() {
                   <td className="px-5 py-3.5 text-sm text-slate-400 tabular-nums">
                     {item.id}
                   </td>
-                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900">
-                    {item.title}
+                  <td className="px-5 py-3.5 text-sm text-slate-900">
+                    <p className="font-medium">{item.title}</p>
+                    {item.imdbLink && (
+                      <a
+                        href={item.imdbLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        IMDB ↗
+                      </a>
+                    )}
                   </td>
                   <td className="px-5 py-3.5 text-sm text-slate-500 max-w-xs truncate">
                     {item.originalName}
@@ -145,6 +189,13 @@ export function MediaPage() {
                       </Button>
                       <Button
                         size="sm"
+                        variant="secondary"
+                        onClick={() => openEdit(item)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="danger"
                         onClick={() => { setDeleteTarget(item); setDeleteError(''); }}
                       >
@@ -165,6 +216,57 @@ export function MediaPage() {
         onSuccess={handleUploadSuccess}
       />
 
+      {/* Edit modal */}
+      <Modal
+        open={editTarget !== null}
+        onClose={() => !saving && setEditTarget(null)}
+        title="Edit Video"
+        maxWidth="max-w-md"
+      >
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Title</label>
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">IMDB Link</label>
+            <input
+              value={editImdbLink}
+              onChange={(e) => setEditImdbLink(e.target.value)}
+              placeholder="https://www.imdb.com/title/..."
+              className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {saveError && (
+            <p className="text-xs text-red-500">{saveError}</p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setEditTarget(null)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              loading={saving}
+              onClick={handleEditSave}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete modal */}
       <Modal
         open={deleteTarget !== null}
         onClose={() => !deleting && setDeleteTarget(null)}

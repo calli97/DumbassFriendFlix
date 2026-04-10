@@ -2,6 +2,8 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
+  Body,
   Param,
   Headers,
   HttpCode,
@@ -11,6 +13,7 @@ import {
   ParseIntPipe,
   Res,
 } from "@nestjs/common";
+import { UpdateMediaDto } from "./dto/update-media.dto";
 import { Response } from "express";
 import { createReadStream, existsSync, statSync } from "fs";
 import { MediaService } from "./media.service";
@@ -32,6 +35,16 @@ export class MediaController {
   @Roles(RoleName.ADMIN)
   findAll(): Promise<Media[]> {
     return this.mediaService.findAll();
+  }
+
+  @Patch(":id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
+  update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateMediaDto,
+  ): Promise<Media> {
+    return this.mediaService.update(id, dto);
   }
 
   @Delete(":id")

@@ -37,6 +37,12 @@ export class MediaService {
     return media;
   }
 
+  async update(id: number, data: { title?: string; imdbLink?: string | null }): Promise<Media> {
+    const media = await this.findOne(id);
+    Object.assign(media, data);
+    return this.mediaRepository.save(media);
+  }
+
   async remove(id: number): Promise<void> {
     const media = await this.findOne(id);
 

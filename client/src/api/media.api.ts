@@ -66,6 +66,9 @@ export const mediaApi = {
 
   findOne: (id: number): Promise<Media> => apiClient.get<Media>(`/media/${id}`),
 
+  update: (id: number, data: { title?: string; imdbLink?: string | null }): Promise<Media> =>
+    apiClient.patch<Media>(`/media/${id}`, data),
+
   remove: (id: number): Promise<void> => apiClient.delete<void>(`/media/${id}`),
 
   /** Returns a URL with the JWT token as a query param for use in <video src="..."> */
