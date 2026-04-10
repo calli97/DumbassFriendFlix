@@ -45,10 +45,11 @@ export function AuthPage() {
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
+          <img src="/img/Magios.png" alt="Magiosflix" className="h-20 mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">
-            DumbassFriendFlix
+            Magiosflix
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Watch together, always.</p>
+          <p className="text-slate-500 text-sm mt-1">El Streaming de los Magios</p>
         </div>
 
         <Card>

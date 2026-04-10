@@ -26,7 +26,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <header className="bg-white border-b border-slate-200 px-6 py-0 flex items-center justify-between">
         {/* Brand + nav */}
         <div className="flex items-center gap-8">
-          <span className="font-semibold text-indigo-600 py-3">DumbassFriendFlix</span>
+          <div className="flex items-center gap-2 py-3">
+            <img src="/img/Magios.png" alt="Magiosflix" className="h-7 w-auto" />
+            <span className="font-semibold text-indigo-600">Magiosflix</span>
+          </div>
 
           <nav className="flex">
             {navLinks.map(({ to, label }) => (
