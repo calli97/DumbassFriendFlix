@@ -15,6 +15,7 @@ export function VideoPlayerPage() {
   const isAdmin = user?.roles.some((r) => r.name === "ADMIN") ?? false;
 
   const [video, setVideo] = useState<Media | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,7 +31,11 @@ export function VideoPlayerPage() {
     if (!id) return;
     mediaApi
       .findOne(Number(id))
-      .then(setVideo)
+      .then(async (v) => {
+        setVideo(v);
+        const url = await mediaApi.getStreamUrl(v.id, v.storageType);
+        setStreamUrl(url);
+      })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Failed to load video");
       })
@@ -161,7 +166,7 @@ export function VideoPlayerPage() {
               style={{ width: "100%", height: "100%" }}
               controls
               autoPlay
-              src={mediaApi.streamUrl(video.id)}
+              src={streamUrl ?? ""}
             />
           </div>
         </div>

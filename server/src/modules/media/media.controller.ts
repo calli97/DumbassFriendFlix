@@ -3,17 +3,24 @@ import {
   Delete,
   Get,
   Patch,
+  Post,
   Body,
   Param,
+  Query,
   Headers,
   HttpCode,
   HttpStatus,
   UseGuards,
   NotFoundException,
+  BadRequestException,
   ParseIntPipe,
   Res,
 } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { UpdateMediaDto } from "./dto/update-media.dto";
+import { CreateMultipartDto } from "./dto/create-multipart.dto";
+import { CompleteMultipartDto } from "./dto/complete-multipart.dto";
+import { AbortMultipartDto } from "./dto/abort-multipart.dto";
 import { Response } from "express";
 import { createReadStream, existsSync, statSync } from "fs";
 import { MediaService } from "./media.service";
@@ -65,6 +72,45 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   findAllForUsers(): Promise<Media[]> {
     return this.mediaService.findAll();
+  }
+
+  @Get("minio-endpoint")
+  @UseGuards(JwtAuthGuard)
+  getMinioEndpoint(): { endpoint: string } {
+    return { endpoint: process.env.MINIO_HOST! };
+  }
+
+  @Get("upload/sign-part")
+  @UseGuards(JwtAuthGuard)
+  async signPart(
+    @Query("key") key: string,
+    @Query("uploadId") uploadId: string,
+    @Query("partNumber") partNumber: string,
+  ): Promise<{ url: string }> {
+    const url = await this.minioService.presignPartUrl(key, uploadId, parseInt(partNumber, 10));
+    return { url };
+  }
+
+  @Post("upload/create-multipart")
+  @UseGuards(JwtAuthGuard)
+  async createMultipart(@Body() dto: CreateMultipartDto): Promise<{ uploadId: string; key: string }> {
+    const key = randomUUID();
+    const uploadId = await this.minioService.createMultipartUpload(key, dto.mimeType);
+    return { uploadId, key };
+  }
+
+  @Post("upload/complete-multipart")
+  @UseGuards(JwtAuthGuard)
+  async completeMultipart(@Body() dto: CompleteMultipartDto): Promise<Media> {
+    await this.minioService.completeMultipartUpload(dto.key, dto.uploadId);
+    return this.mediaService.createFromTus(dto.title, dto.key, dto.originalName, dto.mimeType, "minio");
+  }
+
+  @Post("upload/abort-multipart")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async abortMultipart(@Body() dto: AbortMultipartDto): Promise<void> {
+    await this.minioService.abortMultipartUpload(dto.key, dto.uploadId);
   }
 
   @Get(":id")
@@ -148,5 +194,16 @@ export class MediaController {
 
       createReadStream(media.path).pipe(res);
     }
+  }
+
+  @Get(":id/presign-stream")
+  @UseGuards(QueryJwtAuthGuard)
+  async presignStream(@Param("id", ParseIntPipe) id: number): Promise<{ url: string }> {
+    const media = await this.mediaService.findOne(id);
+    if (media.storageType !== "minio") {
+      throw new BadRequestException("presign-stream is only available for MinIO media");
+    }
+    const url = await this.minioService.presignGetUrl(media.path, 3600);
+    return { url };
   }
 }

@@ -40,4 +40,28 @@ export class MinioService {
   getPartialObject(objectName: string, offset: number, length: number): Promise<Readable> {
     return this.client.getPartialObject(this.bucket, objectName, offset, length);
   }
+
+  async createMultipartUpload(key: string, mimeType: string): Promise<string> {
+    return this.client.initiateNewMultipartUpload(this.bucket, key, { "Content-Type": mimeType });
+  }
+
+  async presignPartUrl(key: string, uploadId: string, partNumber: number): Promise<string> {
+    return this.client.presignedUrl("PUT", this.bucket, key, 3600, {
+      partNumber: String(partNumber),
+      uploadId,
+    });
+  }
+
+  async completeMultipartUpload(key: string, uploadId: string): Promise<void> {
+    const parts = await (this.client as any).listParts(this.bucket, key, uploadId);
+    await this.client.completeMultipartUpload(this.bucket, key, uploadId, parts);
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    await this.client.abortMultipartUpload(this.bucket, key, uploadId);
+  }
+
+  async presignGetUrl(key: string, expirySeconds = 3600): Promise<string> {
+    return this.client.presignedGetObject(this.bucket, key, expirySeconds);
+  }
 }
