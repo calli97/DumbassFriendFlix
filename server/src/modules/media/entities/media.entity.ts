@@ -26,6 +26,9 @@ export class Media {
   @Column({ name: "imdb_link", type: "varchar", length: 255, nullable: true })
   imdbLink: string | null;
 
+  @Column({ name: "storage_type", type: "varchar", length: 10, default: "local" })
+  storageType: "local" | "minio";
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }
