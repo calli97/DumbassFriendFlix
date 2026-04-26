@@ -5,5 +5,6 @@ export interface Media {
   originalName: string;
   mimeType: string;
   imdbLink: string | null;
+  storageType: "local" | "minio";
   createdAt: string;
 }

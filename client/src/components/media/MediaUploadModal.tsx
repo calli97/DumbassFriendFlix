@@ -35,6 +35,7 @@ export function MediaUploadModal({
   onSuccess,
 }: MediaUploadModalProps) {
   const [title, setTitle] = useState("");
+  const [storageType, setStorageType] = useState<"local" | "minio">("local");
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [error, setError] = useState("");
@@ -48,6 +49,7 @@ export function MediaUploadModal({
 
   function reset() {
     setTitle("");
+    setStorageType("local");
     setFile(null);
     setFileError("");
     setError("");
@@ -113,7 +115,7 @@ export function MediaUploadModal({
     lastTimeRef.current = Date.now();
 
     try {
-      const media = await mediaApi.upload(title.trim(), file, handleProgress);
+      const media = await mediaApi.upload(title.trim(), file, handleProgress, storageType);
       onSuccess(media);
       handleClose();
     } catch (err) {
@@ -140,6 +142,19 @@ export function MediaUploadModal({
           required
           maxLength={255}
         />
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700">Storage</label>
+          <select
+            value={storageType}
+            onChange={(e) => setStorageType(e.target.value as "local" | "minio")}
+            disabled={loading}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
+          >
+            <option value="local">Local</option>
+            <option value="minio">MinIO</option>
+          </select>
+        </div>
 
         {/* Video file picker */}
         <div className="flex flex-col gap-1">

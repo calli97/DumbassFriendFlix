@@ -17,12 +17,14 @@ export class MediaService {
     filePath: string,
     originalName: string,
     mimeType: string,
+    storageType: "local" | "minio" = "local",
   ): Promise<Media> {
     const record = this.mediaRepository.create({
       title,
       path: filePath,
       originalName,
       mimeType,
+      storageType,
     });
     return this.mediaRepository.save(record);
   }

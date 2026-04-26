@@ -10,6 +10,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { MediaService } from './modules/media/media.service';
+import { MinioService } from './modules/media/minio.service';
 import { RoleName } from './modules/users/enums/role-name.enum';
 
 function validateStoragePath(): void {
@@ -41,6 +42,7 @@ function mountTusServer(app: any): void {
   const storePath = process.env.STORE_PATH!;
   const jwtSecret = process.env.JWT_SECRET!;
   const mediaService = app.get(MediaService);
+  const minioService = app.get(MinioService);
   const TUS_PATH = '/api/v1/media/tus';
 
   const tusServer = new TusServer({
@@ -72,12 +74,41 @@ function mountTusServer(app: any): void {
     },
 
     onUploadFinish: async (_req, upload) => {
+      console.log(`[TUS] onUploadFinish — upload.id: ${upload.id}`);
+      console.log(`[TUS] metadata:`, upload.metadata);
+
       const title = upload.metadata?.title ?? upload.id;
       const originalName = upload.metadata?.filename ?? upload.id;
       const mimeType = upload.metadata?.filetype ?? 'video/mp4';
       const filePath = path.join(storePath, upload.id);
+      const storageType = (upload.metadata?.storageType as 'local' | 'minio') ?? 'local';
 
-      const media = await mediaService.createFromTus(title, filePath, originalName, mimeType);
+      console.log(`[TUS] storageType: ${storageType}`);
+      console.log(`[TUS] filePath: ${filePath}`);
+
+      let mediaPath = filePath;
+
+      if (storageType === 'minio') {
+        const objectName = upload.id;
+        console.log(`[TUS] Iniciando upload a MinIO — objectName: ${objectName}`);
+        try {
+          await minioService.uploadFile(objectName, filePath, mimeType);
+          console.log(`[TUS] MinIO upload OK`);
+        } catch (e) {
+          console.error(`[TUS] MinIO upload FAILED:`, e);
+          throw e;
+        }
+
+        console.log(`[TUS] Eliminando archivo local: ${filePath}`);
+        await fs.promises.unlink(filePath);
+        await fs.promises.unlink(`${filePath}.info`).catch(() => undefined);
+        mediaPath = objectName;
+        console.log(`[TUS] Archivo local eliminado`);
+      }
+
+      console.log(`[TUS] Guardando en DB — path: ${mediaPath}`);
+      const media = await mediaService.createFromTus(title, mediaPath, originalName, mimeType, storageType);
+      console.log(`[TUS] DB OK — media.id: ${media.id}`);
 
       return { headers: { 'X-Media-Id': String(media.id) } };
     },

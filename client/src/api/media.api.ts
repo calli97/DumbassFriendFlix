@@ -10,6 +10,7 @@ function tusUpload(
   title: string,
   file: File,
   onProgress?: UploadProgressCallback,
+  storageType: "local" | "minio" = "local",
 ): Promise<Media> {
   return new Promise((resolve, reject) => {
     const token = localStorage.getItem("access_token") ?? "";
@@ -23,6 +24,7 @@ function tusUpload(
         filename: file.name,
         filetype: file.type,
         title,
+        storageType,
       },
       headers: {
         Authorization: `Bearer ${token}`,
@@ -58,7 +60,8 @@ export const mediaApi = {
     title: string,
     file: File,
     onProgress?: UploadProgressCallback,
-  ): Promise<Media> => tusUpload(title, file, onProgress),
+    storageType: "local" | "minio" = "local",
+  ): Promise<Media> => tusUpload(title, file, onProgress, storageType),
 
   findAll: (): Promise<Media[]> => apiClient.get<Media[]>("/media/list"),
 

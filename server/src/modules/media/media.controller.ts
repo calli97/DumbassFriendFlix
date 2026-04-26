@@ -17,6 +17,7 @@ import { UpdateMediaDto } from "./dto/update-media.dto";
 import { Response } from "express";
 import { createReadStream, existsSync, statSync } from "fs";
 import { MediaService } from "./media.service";
+import { MinioService } from "./minio.service";
 import { Media } from "./entities/media.entity";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { QueryJwtAuthGuard } from "../../common/guards/query-jwt-auth.guard";
@@ -26,7 +27,10 @@ import { RoleName } from "../users/enums/role-name.enum";
 
 @Controller("media")
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    private readonly minioService: MinioService,
+  ) {}
 
   // ── Admin-only endpoints ──────────────────────────────────────────────────
 
@@ -82,6 +86,38 @@ export class MediaController {
     @Res() res: Response,
   ): Promise<void> {
     const media = await this.mediaService.findOne(id);
+
+    if (media.storageType === "minio") {
+      const size = await this.minioService.getObjectSize(media.path);
+
+      if (range) {
+        const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(startStr, 10);
+        const end = endStr ? parseInt(endStr, 10) : size - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${size}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": media.mimeType,
+        });
+
+        const stream = await this.minioService.getPartialObject(media.path, start, chunkSize);
+        stream.pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": size,
+          "Content-Type": media.mimeType,
+          "Accept-Ranges": "bytes",
+        });
+
+        const stream = await this.minioService.getObject(media.path);
+        stream.pipe(res);
+      }
+
+      return;
+    }
 
     if (!existsSync(media.path)) {
       throw new NotFoundException("File not found on disk");
