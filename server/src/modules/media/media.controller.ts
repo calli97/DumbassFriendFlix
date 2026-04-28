@@ -81,7 +81,8 @@ export class MediaController {
   }
 
   @Get("upload/sign-part")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
   async signPart(
     @Query("key") key: string,
     @Query("uploadId") uploadId: string,
@@ -92,7 +93,8 @@ export class MediaController {
   }
 
   @Post("upload/create-multipart")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
   async createMultipart(@Body() dto: CreateMultipartDto): Promise<{ uploadId: string; key: string }> {
     const key = randomUUID();
     const uploadId = await this.minioService.createMultipartUpload(key, dto.mimeType);
@@ -100,14 +102,16 @@ export class MediaController {
   }
 
   @Post("upload/complete-multipart")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
   async completeMultipart(@Body() dto: CompleteMultipartDto): Promise<Media> {
     await this.minioService.completeMultipartUpload(dto.key, dto.uploadId);
     return this.mediaService.createFromTus(dto.title, dto.key, dto.originalName, dto.mimeType, "minio");
   }
 
   @Post("upload/abort-multipart")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async abortMultipart(@Body() dto: AbortMultipartDto): Promise<void> {
     await this.minioService.abortMultipartUpload(dto.key, dto.uploadId);
