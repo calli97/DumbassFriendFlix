@@ -4,12 +4,15 @@ import { Repository } from "typeorm";
 import { unlink } from "fs/promises";
 import { existsSync } from "fs";
 import { Media } from "./entities/media.entity";
+import { MovieCapture } from "./entities/movie-capture.entity";
 
 @Injectable()
 export class MediaService {
   constructor(
     @InjectRepository(Media)
     private readonly mediaRepository: Repository<Media>,
+    @InjectRepository(MovieCapture)
+    private readonly captureRepository: Repository<MovieCapture>,
   ) {}
 
   async createFromTus(
@@ -53,5 +56,21 @@ export class MediaService {
     for (const filePath of [media.path, `${media.path}.info`]) {
       if (existsSync(filePath)) unlink(filePath).catch(() => undefined);
     }
+  }
+
+  findCaptures(mediaId: number): Promise<MovieCapture[]> {
+    return this.captureRepository.find({ where: { mediaId }, order: { id: "ASC" } });
+  }
+
+  async addCapture(mediaId: number, url: string): Promise<MovieCapture> {
+    await this.findOne(mediaId);
+    const capture = this.captureRepository.create({ mediaId, url });
+    return this.captureRepository.save(capture);
+  }
+
+  async removeCapture(mediaId: number, captureId: number): Promise<void> {
+    const capture = await this.captureRepository.findOne({ where: { id: captureId, mediaId } });
+    if (!capture) throw new NotFoundException(`Capture ${captureId} not found`);
+    await this.captureRepository.delete(captureId);
   }
 }

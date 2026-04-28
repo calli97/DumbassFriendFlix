@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mediaApi } from '../api/media.api';
-import { Media } from '../types/media.types';
+import { Media, MovieCapture } from '../types/media.types';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { MediaUploadModal } from '../components/media/MediaUploadModal';
 import { Modal } from '../components/ui/Modal';
@@ -37,6 +37,13 @@ export function MediaPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  // Captures
+  const [captures, setCaptures] = useState<MovieCapture[]>([]);
+  const [capturesLoading, setCapturesLoading] = useState(false);
+  const [newCaptureUrl, setNewCaptureUrl] = useState('');
+  const [addingCapture, setAddingCapture] = useState(false);
+  const [captureError, setCaptureError] = useState('');
+
   useEffect(() => {
     mediaApi
       .findAllAdmin()
@@ -56,6 +63,40 @@ export function MediaPage() {
     setEditTitle(item.title);
     setEditImdbLink(item.imdbLink ?? '');
     setSaveError('');
+    setNewCaptureUrl('');
+    setCaptureError('');
+    setCaptures([]);
+    setCapturesLoading(true);
+    mediaApi.captures.list(item.id)
+      .then(setCaptures)
+      .catch(() => setCaptureError('Failed to load captures'))
+      .finally(() => setCapturesLoading(false));
+  }
+
+  async function handleAddCapture() {
+    if (!editTarget || !newCaptureUrl.trim()) return;
+    setAddingCapture(true);
+    setCaptureError('');
+    try {
+      const capture = await mediaApi.captures.add(editTarget.id, newCaptureUrl.trim());
+      setCaptures((prev) => [...prev, capture]);
+      setNewCaptureUrl('');
+    } catch {
+      setCaptureError('Failed to add capture');
+    } finally {
+      setAddingCapture(false);
+    }
+  }
+
+  async function handleDeleteCapture(captureId: number) {
+    if (!editTarget) return;
+    setCaptureError('');
+    try {
+      await mediaApi.captures.remove(editTarget.id, captureId);
+      setCaptures((prev) => prev.filter((c) => c.id !== captureId));
+    } catch {
+      setCaptureError('Failed to delete capture');
+    }
   }
 
   async function handleEditSave() {
@@ -221,7 +262,7 @@ export function MediaPage() {
         open={editTarget !== null}
         onClose={() => !saving && setEditTarget(null)}
         title="Edit Video"
-        maxWidth="max-w-md"
+        maxWidth="max-w-2xl"
       >
         <div className="flex flex-col gap-4">
           <div>
@@ -240,6 +281,68 @@ export function MediaPage() {
               placeholder="https://www.imdb.com/title/..."
               className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Captures */}
+          <div className="border-t border-slate-100 pt-4">
+            <label className="block text-xs font-medium text-slate-500 mb-2">Captures</label>
+
+            {capturesLoading ? (
+              <div className="flex justify-center py-4"><Spinner /></div>
+            ) : (
+              <>
+                {captures.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {captures.map((cap) => (
+                      <div key={cap.id} className="relative group">
+                        <img
+                          src={cap.url}
+                          alt=""
+                          className="h-20 w-32 object-cover rounded-md border border-slate-200 bg-slate-100"
+                        />
+                        <button
+                          onClick={() => handleDeleteCapture(cap.id)}
+                          className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs leading-none"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2">
+                  <input
+                    value={newCaptureUrl}
+                    onChange={(e) => setNewCaptureUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCapture()}
+                    placeholder="https://..."
+                    className="flex-1 border border-slate-300 rounded-md px-3 py-1.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {newCaptureUrl.trim() && (
+                    <img
+                      src={newCaptureUrl}
+                      alt="preview"
+                      className="h-9 w-16 object-cover rounded-md border border-slate-200 bg-slate-100 flex-shrink-0"
+                      onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
+                      onLoad={(e) => { e.currentTarget.style.visibility = 'visible'; }}
+                    />
+                  )}
+                  <Button
+                    size="sm"
+                    loading={addingCapture}
+                    onClick={handleAddCapture}
+                    disabled={!newCaptureUrl.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                {captureError && (
+                  <p className="text-xs text-red-500 mt-1">{captureError}</p>
+                )}
+              </>
+            )}
           </div>
 
           {saveError && (

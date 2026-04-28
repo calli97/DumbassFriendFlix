@@ -8,3 +8,9 @@ export interface Media {
   storageType: "local" | "minio";
   createdAt: string;
 }
+
+export interface MovieCapture {
+  id: number;
+  url: string;
+  mediaId: number;
+}

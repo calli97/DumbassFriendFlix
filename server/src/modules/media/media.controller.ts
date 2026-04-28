@@ -18,6 +18,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { UpdateMediaDto } from "./dto/update-media.dto";
+import { CreateMovieCaptureDto } from "./dto/create-movie-capture.dto";
 import { CreateMultipartDto } from "./dto/create-multipart.dto";
 import { CompleteMultipartDto } from "./dto/complete-multipart.dto";
 import { AbortMultipartDto } from "./dto/abort-multipart.dto";
@@ -26,6 +27,7 @@ import { createReadStream, existsSync, statSync } from "fs";
 import { MediaService } from "./media.service";
 import { MinioService } from "./minio.service";
 import { Media } from "./entities/media.entity";
+import { MovieCapture } from "./entities/movie-capture.entity";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { QueryJwtAuthGuard } from "../../common/guards/query-jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
@@ -115,6 +117,33 @@ export class MediaController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async abortMultipart(@Body() dto: AbortMultipartDto): Promise<void> {
     await this.minioService.abortMultipartUpload(dto.key, dto.uploadId);
+  }
+
+  @Get(":id/captures")
+  @UseGuards(JwtAuthGuard)
+  findCaptures(@Param("id", ParseIntPipe) id: number): Promise<MovieCapture[]> {
+    return this.mediaService.findCaptures(id);
+  }
+
+  @Post(":id/captures")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
+  addCapture(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: CreateMovieCaptureDto,
+  ): Promise<MovieCapture> {
+    return this.mediaService.addCapture(id, dto.url);
+  }
+
+  @Delete(":id/captures/:captureId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeCapture(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("captureId", ParseIntPipe) captureId: number,
+  ): Promise<void> {
+    return this.mediaService.removeCapture(id, captureId);
   }
 
   @Get(":id")

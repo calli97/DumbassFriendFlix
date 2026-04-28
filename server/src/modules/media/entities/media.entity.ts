@@ -3,7 +3,9 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  OneToMany,
 } from "typeorm";
+import { MovieCapture } from "./movie-capture.entity";
 
 @Entity("media")
 export class Media {
@@ -31,4 +33,7 @@ export class Media {
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
+
+  @OneToMany(() => MovieCapture, (capture) => capture.media)
+  captures: MovieCapture[];
 }

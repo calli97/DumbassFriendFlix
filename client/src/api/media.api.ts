@@ -1,6 +1,6 @@
 import * as tus from "tus-js-client";
 import { apiClient, ApiError } from "./client";
-import { Media } from "../types/media.types";
+import { Media, MovieCapture } from "../types/media.types";
 import { isMinioDirectAvailable } from "../utils/minio-probe";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api/v1";
@@ -137,5 +137,16 @@ export const mediaApi = {
     }
     const token = localStorage.getItem("access_token") ?? "";
     return `${API_BASE}/media/${id}/stream?token=${encodeURIComponent(token)}`;
+  },
+
+  captures: {
+    list: (mediaId: number): Promise<MovieCapture[]> =>
+      apiClient.get<MovieCapture[]>(`/media/${mediaId}/captures`),
+
+    add: (mediaId: number, url: string): Promise<MovieCapture> =>
+      apiClient.post<MovieCapture>(`/media/${mediaId}/captures`, { url }),
+
+    remove: (mediaId: number, captureId: number): Promise<void> =>
+      apiClient.delete<void>(`/media/${mediaId}/captures/${captureId}`),
   },
 };
