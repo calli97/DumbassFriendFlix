@@ -33,7 +33,7 @@ export class MediaService {
   }
 
   findAll(): Promise<Media[]> {
-    return this.mediaRepository.find({ order: { createdAt: "DESC" } });
+    return this.mediaRepository.find({ order: { createdAt: "DESC" }, relations: { captures: true } });
   }
 
   async findOne(id: number): Promise<Media> {

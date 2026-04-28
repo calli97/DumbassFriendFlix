@@ -7,6 +7,7 @@ export interface Media {
   imdbLink: string | null;
   storageType: "local" | "minio";
   createdAt: string;
+  captures?: MovieCapture[];
 }
 
 export interface MovieCapture {

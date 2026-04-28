@@ -6,6 +6,7 @@ import { UserLayout } from '../components/layout/UserLayout';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { ApiError } from '../api/client';
+import { CaptureSlideshow } from '../components/media/CaptureSlideshow';
 
 function MimeBadge({ mimeType }: { mimeType: string }) {
   const ext = mimeType.split('/')[1]?.toUpperCase() ?? mimeType;
@@ -15,6 +16,7 @@ function MimeBadge({ mimeType }: { mimeType: string }) {
     </span>
   );
 }
+
 
 export function VideoListPage() {
   const navigate = useNavigate();
@@ -59,7 +61,6 @@ export function VideoListPage() {
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 font-medium text-slate-500">Title</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500">IMDB</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">Type</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500">Uploaded</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -70,7 +71,16 @@ export function VideoListPage() {
                   key={video.id}
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-800">{video.title}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {(video.captures?.length ?? 0) > 0 ? (
+                      <div className="flex items-center gap-3">
+                        <CaptureSlideshow captures={video.captures!} />
+                        <span>{video.title}</span>
+                      </div>
+                    ) : (
+                      video.title
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm">
                     {video.imdbLink ? (
                       <a
@@ -84,9 +94,6 @@ export function VideoListPage() {
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <MimeBadge mimeType={video.mimeType} />
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {new Date(video.createdAt).toLocaleDateString('en-US', {

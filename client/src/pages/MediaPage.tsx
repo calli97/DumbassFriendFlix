@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mediaApi } from '../api/media.api';
 import { Media, MovieCapture } from '../types/media.types';
+import { CaptureSlideshow } from '../components/media/CaptureSlideshow';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { MediaUploadModal } from '../components/media/MediaUploadModal';
 import { Modal } from '../components/ui/Modal';
@@ -177,7 +178,7 @@ export function MediaPage() {
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
-                {['#', 'Title', 'File', 'Type', 'Uploaded', 'Actions'].map((h) => (
+                {['#', 'Title', 'Uploaded', 'Actions'].map((h) => (
                   <th
                     key={h}
                     className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wide"
@@ -194,23 +195,38 @@ export function MediaPage() {
                     {item.id}
                   </td>
                   <td className="px-5 py-3.5 text-sm text-slate-900">
-                    <p className="font-medium">{item.title}</p>
-                    {item.imdbLink && (
-                      <a
-                        href={item.imdbLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        IMDB ↗
-                      </a>
+                    {(item.captures?.length ?? 0) > 0 ? (
+                      <div className="flex items-center gap-3">
+                        <CaptureSlideshow captures={item.captures!} />
+                        <div>
+                          <p className="font-medium">{item.title}</p>
+                          {item.imdbLink && (
+                            <a
+                              href={item.imdbLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              IMDB ↗
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-medium">{item.title}</p>
+                        {item.imdbLink && (
+                          <a
+                            href={item.imdbLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            IMDB ↗
+                          </a>
+                        )}
+                      </>
                     )}
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-slate-500 max-w-xs truncate">
-                    {item.originalName}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <ExtBadge mimeType={item.mimeType} />
                   </td>
                   <td className="px-5 py-3.5 text-sm text-slate-500">
                     {new Date(item.createdAt).toLocaleDateString('en-US', {
