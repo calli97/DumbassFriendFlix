@@ -6,12 +6,14 @@ import * as path from 'path';
 import { verify as jwtVerify } from 'jsonwebtoken';
 import { Server as TusServer } from '@tus/server';
 import { FileStore } from '@tus/file-store';
-import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
+import { NestFactory, Reflector, HttpAdapterHost } from '@nestjs/core';
+import { ValidationPipe, ClassSerializerInterceptor, Logger } from '@nestjs/common';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { MediaService } from './modules/media/media.service';
 import { MinioService } from './modules/media/minio.service';
 import { RoleName } from './modules/users/enums/role-name.enum';
+import { LoggingExceptionFilter } from './common/filters/logging-exception.filter';
 
 function validateStoragePath(): void {
   const storePath = process.env.STORE_PATH;
@@ -34,11 +36,10 @@ function validateStoragePath(): void {
     console.error(`[Bootstrap] STORE_PATH exists but is not a directory: "${resolved}"`);
     process.exit(1);
   }
-
-  console.log(`[Bootstrap] Storage directory validated: "${resolved}"`);
 }
 
 function mountTusServer(app: any): void {
+  const logger = new Logger('TUS');
   const storePath = process.env.STORE_PATH!;
   const jwtSecret = process.env.JWT_SECRET!;
   const mediaService = app.get(MediaService);
@@ -54,17 +55,24 @@ function mountTusServer(app: any): void {
     onUploadCreate: async (req, upload) => {
       const auth = req.headers.get('authorization');
       const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-      if (!token) throw { status_code: 401, body: 'Unauthorized' };
+      if (!token) {
+        logger.warn('Upload rejected: missing token');
+        throw { status_code: 401, body: 'Unauthorized' };
+      }
 
       let payload: any;
       try {
         payload = jwtVerify(token, jwtSecret);
       } catch {
+        logger.warn('Upload rejected: invalid token');
         throw { status_code: 401, body: 'Unauthorized' };
       }
 
       const roles: string[] = payload.roles ?? [];
-      if (!roles.includes(RoleName.ADMIN)) throw { status_code: 403, body: 'Forbidden' };
+      if (!roles.includes(RoleName.ADMIN)) {
+        logger.warn(`Upload rejected: insufficient role — userId=${payload.sub}`);
+        throw { status_code: 403, body: 'Forbidden' };
+      }
 
       if (!upload.metadata?.title?.trim()) {
         throw { status_code: 400, body: 'metadata.title is required' };
@@ -74,8 +82,7 @@ function mountTusServer(app: any): void {
     },
 
     onUploadFinish: async (_req, upload) => {
-      console.log(`[TUS] onUploadFinish — upload.id: ${upload.id}`);
-      console.log(`[TUS] metadata:`, upload.metadata);
+      logger.log(`Upload finished — id=${upload.id}`);
 
       const title = upload.metadata?.title ?? upload.id;
       const originalName = upload.metadata?.filename ?? upload.id;
@@ -83,32 +90,29 @@ function mountTusServer(app: any): void {
       const filePath = path.join(storePath, upload.id);
       const storageType = (upload.metadata?.storageType as 'local' | 'minio') ?? 'local';
 
-      console.log(`[TUS] storageType: ${storageType}`);
-      console.log(`[TUS] filePath: ${filePath}`);
+      logger.log(`storageType=${storageType} filePath=${filePath}`);
 
       let mediaPath = filePath;
 
       if (storageType === 'minio') {
         const objectName = upload.id;
-        console.log(`[TUS] Iniciando upload a MinIO — objectName: ${objectName}`);
+        logger.log(`Uploading to MinIO — objectName=${objectName}`);
         try {
           await minioService.uploadFile(objectName, filePath, mimeType);
-          console.log(`[TUS] MinIO upload OK`);
+          logger.log('MinIO upload OK');
         } catch (e) {
-          console.error(`[TUS] MinIO upload FAILED:`, e);
+          logger.error(`MinIO upload FAILED: ${e}`);
           throw e;
         }
 
-        console.log(`[TUS] Eliminando archivo local: ${filePath}`);
         await fs.promises.unlink(filePath);
         await fs.promises.unlink(`${filePath}.info`).catch(() => undefined);
         mediaPath = objectName;
-        console.log(`[TUS] Archivo local eliminado`);
+        logger.log(`Local file removed: ${filePath}`);
       }
 
-      console.log(`[TUS] Guardando en DB — path: ${mediaPath}`);
       const media = await mediaService.createFromTus(title, mediaPath, originalName, mimeType, storageType);
-      console.log(`[TUS] DB OK — media.id: ${media.id}`);
+      logger.log(`Saved to DB — media.id=${media.id}`);
 
       return { headers: { 'X-Media-Id': String(media.id) } };
     },
@@ -119,14 +123,15 @@ function mountTusServer(app: any): void {
   expressApp.all(`${TUS_PATH}`, tusServer.handle.bind(tusServer));
   expressApp.all(`${TUS_PATH}/*`, tusServer.handle.bind(tusServer));
 
-  console.log(`[Bootstrap] Tus upload endpoint: ${TUS_PATH}`);
+  logger.log(`TUS endpoint ready: ${TUS_PATH}`);
 }
 
 async function bootstrap(): Promise<void> {
   // Fail fast — do not start the server if the storage path is misconfigured
   validateStoragePath();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(PinoLogger));
 
   app.enableCors({
     origin: '*',
@@ -154,10 +159,8 @@ async function bootstrap(): Promise<void> {
     ],
   });
 
-  // Global route prefix
   app.setGlobalPrefix('api/v1');
 
-  // Validate and strip unknown properties from incoming requests
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -166,14 +169,18 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Serialize responses using class-transformer decorators (e.g. @Exclude)
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new LoggingExceptionFilter(httpAdapter));
 
   mountTusServer(app);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`[Bootstrap] Server running on http://localhost:${port}/api/v1`);
+
+  const logger = new Logger('Bootstrap');
+  logger.log(`Server running on http://localhost:${port}/api/v1`);
 }
 
 bootstrap();

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 
@@ -16,6 +16,8 @@ export interface LoginResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -32,19 +34,17 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<LoginResponse> {
     const user = await this.usersService.findByUsername(loginDto.username);
 
-    // Use a generic message to avoid leaking whether the email exists
     if (!user) {
+      this.logger.warn(`Login failed: unknown username="${loginDto.username}"`);
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const passwordMatch = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
+    const passwordMatch = await bcrypt.compare(loginDto.password, user.password);
     if (!passwordMatch) {
+      this.logger.warn(`Login failed: wrong password — userId=${user.id} username="${user.username}"`);
       throw new UnauthorizedException("Invalid credentials");
     }
-    console.log("ROLES: ", user.roles);
+
     // Build the JWT payload — see jwt-payload.interface.ts for field definitions
     const payload: JwtPayload = {
       sub: user.id,
@@ -52,6 +52,8 @@ export class AuthService {
       username: user.username,
       roles: user.roles.map((r) => r.name),
     };
+
+    this.logger.log(`Login OK — userId=${user.id} username="${user.username}" roles=[${payload.roles.join(',')}]`);
 
     return {
       access_token: this.jwtService.sign(payload),

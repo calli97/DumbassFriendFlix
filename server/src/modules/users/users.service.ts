@@ -39,7 +39,6 @@ export class UsersService {
 
     // Resolve requested roles, fall back to USER if none provided
     const resolvedRoles = await this.resolveRoles(roleNames ?? [RoleName.USER]);
-    console.log(resolvedRoles);
 
     const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
@@ -48,7 +47,6 @@ export class UsersService {
     newUser.username = username;
     newUser.password = hashedPassword;
     const created = await this.usersRepository.save(newUser);
-    console.log(created);
     created.roles = resolvedRoles;
     await this.usersRepository.save(created);
 

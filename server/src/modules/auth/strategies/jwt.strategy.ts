@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +9,8 @@ import {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(configService: ConfigService) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
@@ -25,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   // The return value is attached to request.user by Passport
   validate(payload: JwtPayload): AuthenticatedUser {
     if (!payload.sub || !payload.roles) {
+      this.logger.warn('Token rejected: missing sub or roles in payload');
       throw new UnauthorizedException('Invalid token payload');
     }
 
