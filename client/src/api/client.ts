@@ -23,6 +23,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      const currentPath = window.location.pathname + window.location.search;
+      if (currentPath !== '/') {
+        sessionStorage.setItem('redirect_after_login', currentPath);
+      }
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
     const body = await response.json().catch(() => ({ message: 'Request failed' }));
     throw new ApiError(response.status, body.message ?? 'Request failed');
   }

@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '../types/auth.types';
 
@@ -14,8 +14,12 @@ export function ProtectedRoute({
   redirectTo = '/',
 }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to={redirectTo} replace />;
+  if (!isAuthenticated) {
+    sessionStorage.setItem('redirect_after_login', location.pathname + location.search);
+    return <Navigate to={redirectTo} replace />;
+  }
 
   if (allowedRoles && user) {
     const userRoleNames = user.roles.map((r) => r.name);

@@ -31,8 +31,14 @@ export function AuthPage() {
 
       login(access_token, user);
 
-      const isAdmin = user.roles.some((r) => r.name === 'ADMIN');
-      navigate(isAdmin ? '/users' : '/profile', { replace: true });
+      const savedPath = sessionStorage.getItem('redirect_after_login');
+      if (savedPath) {
+        sessionStorage.removeItem('redirect_after_login');
+        navigate(savedPath, { replace: true });
+      } else {
+        const isAdmin = user.roles.some((r) => r.name === 'ADMIN');
+        navigate(isAdmin ? '/users' : '/videos', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
