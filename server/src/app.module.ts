@@ -6,6 +6,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MediaModule } from './modules/media/media.module';
+import { RequestModule } from './modules/request/request.module';
 import { buildDatabaseConfig } from './config/database.config';
 
 @Module({
@@ -33,6 +34,7 @@ import { buildDatabaseConfig } from './config/database.config';
     UsersModule,
     AuthModule,
     MediaModule,
+    RequestModule,
   ],
 })
 export class AppModule {}
