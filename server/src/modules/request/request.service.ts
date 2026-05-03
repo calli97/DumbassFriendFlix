@@ -18,7 +18,8 @@ export class RequestService {
 
   async create(dto: CreateRequestDto, userId: number): Promise<Request> {
     const request = new Request();
-    request.status = dto.status ?? RequestStatus.PENDING;
+    request.name = dto.name;
+    request.status = RequestStatus.PENDING;
     request.comment = dto.comment ?? null;
     request.mediaLinked = null;
     request.recommendedBy = { id: userId } as User;
@@ -33,6 +34,7 @@ export class RequestService {
 
   async createAsAdmin(dto: CreateRequestAdminDto): Promise<Request> {
     const request = new Request();
+    request.name = dto.name;
     request.status = dto.status ?? RequestStatus.PENDING;
     request.comment = dto.comment ?? null;
     request.mediaLinked = dto.mediaId != null ? ({ id: dto.mediaId } as Media) : null;
@@ -53,6 +55,7 @@ export class RequestService {
       throw new NotFoundException(`Request with id ${id} not found`);
     }
 
+    if (dto.name !== undefined) request.name = dto.name;
     if (dto.status !== undefined) request.status = dto.status;
     if (dto.comment !== undefined) request.comment = dto.comment;
     if (dto.mediaId !== undefined) {
@@ -68,6 +71,17 @@ export class RequestService {
       where: { id: saved.id },
       relations: { recommendedBy: true, mediaLinked: true },
     }) as Promise<Request>;
+  }
+
+  async findAll(page: number): Promise<{ data: Request[]; total: number; page: number; limit: number }> {
+    const limit = 10;
+    const [data, total] = await this.requestRepository.findAndCount({
+      relations: { recommendedBy: true, mediaLinked: true },
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit };
   }
 
   async remove(id: number): Promise<void> {

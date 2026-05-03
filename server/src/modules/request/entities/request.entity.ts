@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
+  ManyToOne,
   JoinColumn,
 } from "typeorm";
 import { Media } from "../../media/entities/media.entity";
@@ -15,6 +16,9 @@ export class Request {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: "varchar", length: 255 })
+  name: string;
+
   @Column({
     type: "varchar",
     length: 20,
@@ -25,11 +29,11 @@ export class Request {
   @Column({ type: "text", nullable: true })
   comment: string | null;
 
-  @OneToOne(() => Media, { nullable: true, eager: false })
+  @OneToOne(() => Media, { nullable: true, eager: false, onDelete: "SET NULL" })
   @JoinColumn({ name: "media_id" })
   mediaLinked: Media | null;
 
-  @OneToOne(() => User, { nullable: true, eager: false })
+  @ManyToOne(() => User, { nullable: true, eager: false, onDelete: "SET NULL" })
   @JoinColumn({ name: "recommended_by_id" })
   recommendedBy: User | null;
 

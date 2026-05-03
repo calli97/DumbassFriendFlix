@@ -1,14 +1,17 @@
 import {
   Controller,
+  Get,
   Post,
   Patch,
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  DefaultValuePipe,
 } from "@nestjs/common";
 import { RequestService } from "./request.service";
 import { CreateRequestDto } from "./dto/create-request.dto";
@@ -27,6 +30,14 @@ export class RequestController {
   constructor(private readonly requestService: RequestService) {}
 
   // ── User endpoints ────────────────────────────────────────────────────────
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  findAll(
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ): Promise<{ data: Request[]; total: number; page: number; limit: number }> {
+    return this.requestService.findAll(page);
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)

@@ -10,6 +10,7 @@ interface UserLayoutProps {
 const navLinks = [
   { to: '/profile', label: 'Profile' },
   { to: '/videos', label: 'Videos' },
+  { to: '/requests', label: 'Requests' },
 ];
 
 export function UserLayout({ children }: UserLayoutProps) {

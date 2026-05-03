@@ -10,6 +10,7 @@ interface AdminLayoutProps {
 const navLinks = [
   { to: '/users', label: 'Users' },
   { to: '/media', label: 'Media' },
+  { to: '/requests', label: 'Requests' },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {

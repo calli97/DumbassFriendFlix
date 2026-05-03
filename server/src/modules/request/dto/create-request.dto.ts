@@ -1,10 +1,8 @@
-import { IsEnum, IsOptional, IsString } from "class-validator";
-import { RequestStatus } from "../enums/request-status.enum";
+import { IsOptional, IsString } from "class-validator";
 
 export class CreateRequestDto {
-  @IsOptional()
-  @IsEnum(RequestStatus)
-  status?: RequestStatus;
+  @IsString()
+  name: string;
 
   @IsOptional()
   @IsString()

@@ -3,6 +3,10 @@ import { RequestStatus } from "../enums/request-status.enum";
 
 export class UpdateRequestDto {
   @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
   @IsEnum(RequestStatus)
   status?: RequestStatus;
 

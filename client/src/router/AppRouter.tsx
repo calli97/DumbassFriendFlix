@@ -7,6 +7,7 @@ import { UsersPage } from '../pages/UsersPage';
 import { MediaPage } from '../pages/MediaPage';
 import { VideoListPage } from '../pages/VideoListPage';
 import { VideoPlayerPage } from '../pages/VideoPlayerPage';
+import { RequestsPage } from '../pages/RequestsPage';
 
 function RootRedirect() {
   const { isAuthenticated, user } = useAuth();
@@ -28,6 +29,7 @@ export function AppRouter() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/videos" element={<VideoListPage />} />
           <Route path="/videos/:id" element={<VideoPlayerPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
         </Route>
 
         {/* Admin-only */}
