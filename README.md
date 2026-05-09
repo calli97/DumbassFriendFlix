@@ -1,4 +1,4 @@
-# DumbassFriendFlix
+# Self-Hosted Media Streaming Platform
 
 A private, self-hosted video-sharing platform built for sharing movies and videos with friends — Netflix-style.
 
