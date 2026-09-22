@@ -1,10 +1,14 @@
-import { FormEvent, useRef, useState, useCallback } from "react";
+import { FormEvent, useEffect, useRef, useState, useCallback } from "react";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { Combobox, ComboboxOption } from "../ui/Combobox";
 import { mediaApi } from "../../api/media.api";
+import { requestsApi } from "../../api/requests.api";
 import { Media } from "../../types/media.types";
+import { RequestItem } from "../../types/request.types";
 import { ApiError } from "../../api/client";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 
 function formatSpeed(bytesPerSec: number): string {
   if (bytesPerSec <= 0) return "";
@@ -35,6 +39,11 @@ export function MediaUploadModal({
   onSuccess,
 }: MediaUploadModalProps) {
   const [title, setTitle] = useState("");
+  const [requestQuery, setRequestQuery] = useState("");
+  const [requestOptions, setRequestOptions] = useState<RequestItem[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(null);
+  const debouncedRequestQuery = useDebouncedValue(requestQuery);
   const [storageType, setStorageType] = useState<"local" | "minio">("local");
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
@@ -47,8 +56,42 @@ export function MediaUploadModal({
   const lastLoadedRef = useRef(0);
   const lastTimeRef = useRef(0);
 
+  // Pending requests matching what was typed in the request selector
+  useEffect(() => {
+    if (!open || selectedRequest) return;
+    let ignore = false;
+    setRequestsLoading(true);
+    requestsApi
+      .findAll(1, { status: "Pending", name: debouncedRequestQuery })
+      .then((res) => {
+        if (!ignore) setRequestOptions(res.data);
+      })
+      .catch(() => {
+        if (!ignore) setRequestOptions([]);
+      })
+      .finally(() => {
+        if (!ignore) setRequestsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [open, selectedRequest, debouncedRequestQuery]);
+
+  function handleRequestSelect(option: ComboboxOption | null) {
+    if (!option) {
+      setSelectedRequest(null);
+      return;
+    }
+    const req = requestOptions.find((r) => String(r.id) === option.value) ?? null;
+    setSelectedRequest(req);
+    if (req) setTitle(req.name);
+  }
+
   function reset() {
     setTitle("");
+    setRequestQuery("");
+    setRequestOptions([]);
+    setSelectedRequest(null);
     setStorageType("local");
     setFile(null);
     setFileError("");
@@ -114,15 +157,37 @@ export function MediaUploadModal({
     lastLoadedRef.current = 0;
     lastTimeRef.current = Date.now();
 
+    let media: Media;
     try {
-      const media = await mediaApi.upload(title.trim(), file, handleProgress, storageType);
-      onSuccess(media);
-      handleClose();
+      media = await mediaApi.upload(title.trim(), file, handleProgress, storageType);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
-    } finally {
       setLoading(false);
+      return;
     }
+
+    if (selectedRequest) {
+      try {
+        await requestsApi.update(selectedRequest.id, { mediaId: media.id, status: "Complete" });
+      } catch (err) {
+        // The video is already uploaded; only the request link failed.
+        // Clear the file so a retry can't upload it twice.
+        onSuccess(media);
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setError(
+          `Video uploaded, but linking it to request "${selectedRequest.name}" failed: ${
+            err instanceof ApiError ? err.message : "unknown error"
+          }. Link it manually from Requests.`,
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(false);
+    onSuccess(media);
+    handleClose();
   }
 
   return (
@@ -133,6 +198,22 @@ export function MediaUploadModal({
             {error}
           </div>
         )}
+
+        <Combobox
+          label="Request (optional)"
+          placeholder="Search pending requests…"
+          query={requestQuery}
+          onQueryChange={setRequestQuery}
+          options={requestOptions.map((r) => ({ value: String(r.id), label: r.name }))}
+          selected={
+            selectedRequest
+              ? { value: String(selectedRequest.id), label: selectedRequest.name }
+              : null
+          }
+          onSelect={handleRequestSelect}
+          loading={requestsLoading}
+          disabled={loading}
+        />
 
         <Input
           label="Title"

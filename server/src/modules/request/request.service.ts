@@ -73,14 +73,30 @@ export class RequestService {
     }) as Promise<Request>;
   }
 
-  async findAll(page: number): Promise<{ data: Request[]; total: number; page: number; limit: number }> {
+  async findAll(
+    page: number,
+    filters: { name?: string; status?: RequestStatus; recommendedById?: number } = {},
+  ): Promise<{ data: Request[]; total: number; page: number; limit: number }> {
     const limit = 10;
-    const [data, total] = await this.requestRepository.findAndCount({
-      relations: { recommendedBy: true, mediaLinked: true },
-      order: { createdAt: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const qb = this.requestRepository
+      .createQueryBuilder("request")
+      .leftJoinAndSelect("request.recommendedBy", "recommendedBy")
+      .leftJoinAndSelect("request.mediaLinked", "mediaLinked")
+      .orderBy("request.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (filters.name?.trim()) {
+      qb.andWhere("LOWER(request.name) LIKE LOWER(:name)", { name: `%${filters.name.trim()}%` });
+    }
+    if (filters.status) {
+      qb.andWhere("request.status = :status", { status: filters.status });
+    }
+    if (filters.recommendedById != null) {
+      qb.andWhere("recommendedBy.id = :recommendedById", { recommendedById: filters.recommendedById });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 

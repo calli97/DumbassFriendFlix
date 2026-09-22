@@ -12,6 +12,7 @@ import {
   HttpStatus,
   ParseIntPipe,
   DefaultValuePipe,
+  ParseEnumPipe,
 } from "@nestjs/common";
 import { RequestService } from "./request.service";
 import { CreateRequestDto } from "./dto/create-request.dto";
@@ -23,7 +24,9 @@ import { Roles } from "../../common/decorators/roles.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUser } from "../auth/interfaces/jwt-payload.interface";
 import { RoleName } from "../users/enums/role-name.enum";
+import { OptionalIntPipe } from "../../common/pipes/optional-int.pipe";
 import { Request } from "./entities/request.entity";
+import { RequestStatus } from "./enums/request-status.enum";
 
 @Controller("requests")
 export class RequestController {
@@ -35,8 +38,11 @@ export class RequestController {
   @UseGuards(JwtAuthGuard)
   findAll(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("name") name?: string,
+    @Query("status", new ParseEnumPipe(RequestStatus, { optional: true })) status?: RequestStatus,
+    @Query("recommendedById", OptionalIntPipe) recommendedById?: number,
   ): Promise<{ data: Request[]; total: number; page: number; limit: number }> {
-    return this.requestService.findAll(page);
+    return this.requestService.findAll(page, { name, status, recommendedById });
   }
 
   @Post()

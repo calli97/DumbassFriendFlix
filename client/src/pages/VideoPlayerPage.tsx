@@ -7,6 +7,7 @@ import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useVideoProgress } from "../hooks/useVideoProgress";
 
 export function VideoPlayerPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,9 @@ export function VideoPlayerPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useVideoProgress(videoRef, video?.id, user?.id, streamUrl);
 
   useEffect(() => {
     if (!id) return;
@@ -163,6 +167,7 @@ export function VideoPlayerPage() {
 
           <div className="bg-black" style={{ aspectRatio: "16/9" }}>
             <video
+              ref={videoRef}
               style={{ width: "100%", height: "100%" }}
               controls
               autoPlay

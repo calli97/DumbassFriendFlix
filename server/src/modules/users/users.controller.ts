@@ -38,6 +38,13 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  // Minimal user list for filter selectors, available to any authenticated user
+  @Get('options')
+  @Roles(RoleName.ADMIN, RoleName.USER)
+  findOptions(): Promise<Pick<User, 'id' | 'username'>[]> {
+    return this.usersService.findOptions();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number): Promise<User> {
     return this.usersService.findOne(id);

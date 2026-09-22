@@ -5,6 +5,19 @@ import { unlink } from "fs/promises";
 import { existsSync } from "fs";
 import { Media } from "./entities/media.entity";
 import { MovieCapture } from "./entities/movie-capture.entity";
+import { Request } from "../request/entities/request.entity";
+
+export interface MediaFilters {
+  name?: string;
+  recommendedById?: number;
+}
+
+export interface PaginatedMedia {
+  data: Media[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class MediaService {
@@ -32,8 +45,33 @@ export class MediaService {
     return this.mediaRepository.save(record);
   }
 
-  findAll(): Promise<Media[]> {
-    return this.mediaRepository.find({ order: { createdAt: "DESC" }, relations: { captures: true } });
+  async findPaginated(page: number, filters: MediaFilters): Promise<PaginatedMedia> {
+    const limit = 10;
+    const qb = this.mediaRepository
+      .createQueryBuilder("media")
+      .orderBy("media.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (filters.name?.trim()) {
+      qb.andWhere("LOWER(media.title) LIKE LOWER(:name)", { name: `%${filters.name.trim()}%` });
+    }
+
+    if (filters.recommendedById != null) {
+      qb.innerJoin(
+        Request,
+        "req",
+        "req.media_id = media.id AND req.recommended_by_id = :recommendedById",
+        { recommendedById: filters.recommendedById },
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit };
+  }
+
+  findOptions(): Promise<Pick<Media, "id" | "title">[]> {
+    return this.mediaRepository.find({ select: { id: true, title: true }, order: { title: "ASC" } });
   }
 
   async findOne(id: number): Promise<Media> {

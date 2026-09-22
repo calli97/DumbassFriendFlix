@@ -8,7 +8,7 @@ import { usersApi } from '../../api/users.api';
 import { mediaApi } from '../../api/media.api';
 import { RequestItem, RequestStatus } from '../../types/request.types';
 import { User } from '../../types/auth.types';
-import { Media } from '../../types/media.types';
+import { MediaOption } from '../../types/media.types';
 import { ApiError } from '../../api/client';
 
 const STATUS_OPTIONS = [
@@ -34,7 +34,7 @@ export function RequestFormModal({ open, onClose, isAdmin, request, onSuccess }:
   const [mediaId, setMediaId] = useState<string>('');
 
   const [users, setUsers] = useState<User[]>([]);
-  const [medias, setMedias] = useState<Media[]>([]);
+  const [medias, setMedias] = useState<MediaOption[]>([]);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,7 +62,7 @@ export function RequestFormModal({ open, onClose, isAdmin, request, onSuccess }:
     if (!open || !isAdmin) return;
 
     usersApi.findAll().then(setUsers).catch(() => {});
-    mediaApi.findAllAdmin().then(setMedias).catch(() => {});
+    mediaApi.findOptions().then(setMedias).catch(() => {});
   }, [open, isAdmin]);
 
   async function handleSubmit(e: FormEvent) {

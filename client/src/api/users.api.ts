@@ -15,7 +15,12 @@ export interface UpdateUserPayload {
   roles?: RoleName[];
 }
 
+export type UserOption = Pick<User, 'id' | 'username'>;
+
 export const usersApi = {
+  findOptions: (): Promise<UserOption[]> =>
+    apiClient.get<UserOption[]>('/users/options'),
+
   findAll: (): Promise<User[]> =>
     apiClient.get<User[]>('/users'),
 

@@ -7,11 +7,18 @@ export interface Media {
   imdbLink: string | null;
   storageType: "local" | "minio";
   createdAt: string;
-  captures?: MovieCapture[];
 }
 
-export interface MovieCapture {
-  id: number;
-  url: string;
-  mediaId: number;
+export type MediaOption = Pick<Media, "id" | "title">;
+
+export interface MediaFilters {
+  name?: string;
+  recommendedById?: number;
+}
+
+export interface PaginatedMedia {
+  data: Media[];
+  total: number;
+  page: number;
+  limit: number;
 }

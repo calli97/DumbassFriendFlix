@@ -19,3 +19,9 @@ export interface PaginatedRequests {
   page: number;
   limit: number;
 }
+
+export interface RequestFilters {
+  name?: string;
+  status?: RequestStatus;
+  recommendedById?: number;
+}

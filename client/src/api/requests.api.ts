@@ -1,5 +1,5 @@
-import { apiClient } from './client';
-import { RequestItem, PaginatedRequests } from '../types/request.types';
+import { apiClient, toQueryString } from './client';
+import { RequestItem, PaginatedRequests, RequestFilters } from '../types/request.types';
 
 export interface CreateRequestPayload {
   name: string;
@@ -23,8 +23,8 @@ export interface UpdateRequestPayload {
 }
 
 export const requestsApi = {
-  findAll: (page = 1): Promise<PaginatedRequests> =>
-    apiClient.get<PaginatedRequests>(`/requests?page=${page}`),
+  findAll: (page = 1, filters: RequestFilters = {}): Promise<PaginatedRequests> =>
+    apiClient.get<PaginatedRequests>(`/requests${toQueryString({ page, ...filters })}`),
 
   create: (payload: CreateRequestPayload): Promise<RequestItem> =>
     apiClient.post<RequestItem>('/requests', payload),

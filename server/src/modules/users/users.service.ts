@@ -57,6 +57,10 @@ export class UsersService {
     return this.usersRepository.find({ relations: { roles: true } });
   }
 
+  findOptions(): Promise<Pick<User, "id" | "username">[]> {
+    return this.usersRepository.find({ select: { id: true, username: true }, order: { username: "ASC" } });
+  }
+
   async findOne(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },

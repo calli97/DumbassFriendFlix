@@ -14,6 +14,7 @@ import {
   NotFoundException,
   BadRequestException,
   ParseIntPipe,
+  DefaultValuePipe,
   Res,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
@@ -24,7 +25,7 @@ import { CompleteMultipartDto } from "./dto/complete-multipart.dto";
 import { AbortMultipartDto } from "./dto/abort-multipart.dto";
 import { Response } from "express";
 import { createReadStream, existsSync, statSync } from "fs";
-import { MediaService } from "./media.service";
+import { MediaService, PaginatedMedia } from "./media.service";
 import { MinioService } from "./minio.service";
 import { Media } from "./entities/media.entity";
 import { MovieCapture } from "./entities/movie-capture.entity";
@@ -33,6 +34,7 @@ import { QueryJwtAuthGuard } from "../../common/guards/query-jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { RoleName } from "../users/enums/role-name.enum";
+import { OptionalIntPipe } from "../../common/pipes/optional-int.pipe";
 
 @Controller("media")
 export class MediaController {
@@ -46,8 +48,19 @@ export class MediaController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
-  findAll(): Promise<Media[]> {
-    return this.mediaService.findAll();
+  findAll(
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("name") name?: string,
+    @Query("recommendedById", OptionalIntPipe) recommendedById?: number,
+  ): Promise<PaginatedMedia> {
+    return this.mediaService.findPaginated(page, { name, recommendedById });
+  }
+
+  @Get("options")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.ADMIN)
+  findOptions(): Promise<Pick<Media, "id" | "title">[]> {
+    return this.mediaService.findOptions();
   }
 
   @Patch(":id")
@@ -72,8 +85,12 @@ export class MediaController {
 
   @Get("list")
   @UseGuards(JwtAuthGuard)
-  findAllForUsers(): Promise<Media[]> {
-    return this.mediaService.findAll();
+  findAllForUsers(
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("name") name?: string,
+    @Query("recommendedById", OptionalIntPipe) recommendedById?: number,
+  ): Promise<PaginatedMedia> {
+    return this.mediaService.findPaginated(page, { name, recommendedById });
   }
 
   @Get("minio-endpoint")

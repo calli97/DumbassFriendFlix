@@ -1,6 +1,6 @@
 import * as tus from "tus-js-client";
-import { apiClient, ApiError } from "./client";
-import { Media, MovieCapture } from "../types/media.types";
+import { apiClient, ApiError, toQueryString } from "./client";
+import { Media, MediaFilters, MediaOption, PaginatedMedia } from "../types/media.types";
 import { isMinioDirectAvailable } from "../utils/minio-probe";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api/v1";
@@ -114,9 +114,13 @@ export const mediaApi = {
     return tusUpload(title, file, onProgress, storageType);
   },
 
-  findAll: (): Promise<Media[]> => apiClient.get<Media[]>("/media/list"),
+  findAll: (page = 1, filters: MediaFilters = {}): Promise<PaginatedMedia> =>
+    apiClient.get<PaginatedMedia>(`/media/list${toQueryString({ page, ...filters })}`),
 
-  findAllAdmin: (): Promise<Media[]> => apiClient.get<Media[]>("/media"),
+  findAllAdmin: (page = 1, filters: MediaFilters = {}): Promise<PaginatedMedia> =>
+    apiClient.get<PaginatedMedia>(`/media${toQueryString({ page, ...filters })}`),
+
+  findOptions: (): Promise<MediaOption[]> => apiClient.get<MediaOption[]>("/media/options"),
 
   findOne: (id: number): Promise<Media> => apiClient.get<Media>(`/media/${id}`),
 
@@ -137,16 +141,5 @@ export const mediaApi = {
     }
     const token = localStorage.getItem("access_token") ?? "";
     return `${API_BASE}/media/${id}/stream?token=${encodeURIComponent(token)}`;
-  },
-
-  captures: {
-    list: (mediaId: number): Promise<MovieCapture[]> =>
-      apiClient.get<MovieCapture[]>(`/media/${mediaId}/captures`),
-
-    add: (mediaId: number, url: string): Promise<MovieCapture> =>
-      apiClient.post<MovieCapture>(`/media/${mediaId}/captures`, { url }),
-
-    remove: (mediaId: number, captureId: number): Promise<void> =>
-      apiClient.delete<void>(`/media/${mediaId}/captures/${captureId}`),
   },
 };
