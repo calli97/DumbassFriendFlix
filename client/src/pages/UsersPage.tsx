@@ -5,7 +5,9 @@ import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { UserFormModal } from '../components/users/UserFormModal';
+import { Modal } from '../components/ui/Modal';
 import { ApiError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 function RoleBadge({ name }: { name: string }) {
   const isAdmin = name === 'ADMIN';
@@ -22,11 +24,17 @@ function RoleBadge({ name }: { name: string }) {
 }
 
 export function UsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+
+  // Delete
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     usersApi
@@ -53,6 +61,21 @@ export function UsersPage() {
       const exists = prev.some((u) => u.id === saved.id);
       return exists ? prev.map((u) => (u.id === saved.id ? saved : u)) : [saved, ...prev];
     });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await usersApi.remove(deleteTarget.id);
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : 'Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -87,8 +110,15 @@ export function UsersPage() {
       )}
 
       {users.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-100">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[48rem] table-fixed divide-y divide-slate-100">
+            <colgroup>
+              <col className="w-[22%]" />
+              <col />
+              <col className="w-36" />
+              <col className="w-36" />
+              <col className="w-44" />
+            </colgroup>
             <thead className="bg-slate-50">
               <tr>
                 {['Username', 'Email', 'Roles', 'Member since', ''].map((h) => (
@@ -104,8 +134,8 @@ export function UsersPage() {
             <tbody className="divide-y divide-slate-100">
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900">{u.username}</td>
-                  <td className="px-5 py-3.5 text-sm text-slate-600">{u.email}</td>
+                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900 break-words">{u.username}</td>
+                  <td className="px-5 py-3.5 text-sm text-slate-600 break-words">{u.email}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex flex-wrap gap-1">
                       {u.roles.map((r) => (
@@ -113,17 +143,28 @@ export function UsersPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-sm text-slate-500">
+                  <td className="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
                     })}
                   </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <Button variant="secondary" size="sm" onClick={() => openEditModal(u)}>
-                      Edit
-                    </Button>
+                  <td className="px-5 py-3.5">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => openEditModal(u)}>
+                        Edit
+                      </Button>
+                      {u.id !== currentUser?.id && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => { setDeleteTarget(u); setDeleteError(''); }}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -138,6 +179,45 @@ export function UsersPage() {
         user={editingUser}
         onSuccess={handleModalSuccess}
       />
+
+      {/* Delete modal */}
+      <Modal
+        open={deleteTarget !== null}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        title="Delete User"
+        maxWidth="max-w-sm"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-slate-600 break-words">
+            Are you sure you want to delete{' '}
+            <span className="font-medium text-slate-900">"{deleteTarget?.username}"</span>?
+            They will no longer be able to log in and will stop appearing across the app.
+          </p>
+
+          {deleteError && (
+            <p className="text-xs text-red-500">{deleteError}</p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={deleting}
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   );
 }

@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   ManyToMany,
   JoinTable,
 } from "typeorm";
@@ -31,6 +32,12 @@ export class User {
 
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
+
+  // Soft delete: set when an admin removes the user. TypeORM excludes these rows
+  // from find/findOne and from query-builder joins automatically.
+  @Exclude()
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
+  deletedAt: Date | null;
 
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable({

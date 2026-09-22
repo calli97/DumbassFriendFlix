@@ -7,6 +7,7 @@ import {
   JwtPayload,
   AuthenticatedUser,
 } from "../interfaces/jwt-payload.interface";
+import { UsersService } from "../../users/users.service";
 
 /**
  * JWT strategy that accepts the token from the Authorization header OR
@@ -15,7 +16,10 @@ import {
  */
 @Injectable()
 export class QueryJwtStrategy extends PassportStrategy(Strategy, "query-jwt") {
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly usersService: UsersService,
+  ) {
     const secret = configService.get<string>("JWT_SECRET");
     if (!secret)
       throw new Error("JWT_SECRET environment variable is not defined");
@@ -30,9 +34,13 @@ export class QueryJwtStrategy extends PassportStrategy(Strategy, "query-jwt") {
     });
   }
 
-  validate(payload: JwtPayload): AuthenticatedUser {
+  async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     if (!payload.sub || !payload.roles) {
       throw new UnauthorizedException("Invalid token payload");
+    }
+    // Reject tokens of users that were deleted after the token was issued
+    if (!(await this.usersService.isActive(payload.sub))) {
+      throw new UnauthorizedException("User no longer exists");
     }
     return {
       sub: payload.sub,

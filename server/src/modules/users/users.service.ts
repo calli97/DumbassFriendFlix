@@ -30,8 +30,10 @@ export class UsersService {
     const { username, email, password, roles: roleNames } = createUserDto;
 
     // Guard against duplicate username or email
+    // withDeleted: soft-deleted users still hold their username/email in the UNIQUE index
     const exists = await this.usersRepository.findOne({
       where: [{ username }, { email }],
+      withDeleted: true,
     });
     if (exists) {
       throw new ConflictException("Username or email already in use");
@@ -79,12 +81,12 @@ export class UsersService {
 
     // Check uniqueness only if the values are actually changing
     if (username && username !== user.username) {
-      const taken = await this.usersRepository.findOne({ where: { username } });
+      const taken = await this.usersRepository.findOne({ where: { username }, withDeleted: true });
       if (taken) throw new ConflictException("Username already in use");
     }
 
     if (email && email !== user.email) {
-      const taken = await this.usersRepository.findOne({ where: { email } });
+      const taken = await this.usersRepository.findOne({ where: { email }, withDeleted: true });
       if (taken) throw new ConflictException("Email already in use");
     }
 
@@ -113,9 +115,18 @@ export class UsersService {
     return this.findOne(user.id);
   }
 
-  async remove(id: number): Promise<void> {
-    const user = await this.findOne(id);
-    await this.usersRepository.remove(user);
+  // Soft delete: the row stays in the DB but the user disappears from the app
+  async remove(id: number, currentUserId: number): Promise<void> {
+    if (id === currentUserId) {
+      throw new BadRequestException("You cannot delete your own user");
+    }
+    await this.findOne(id);
+    await this.usersRepository.softDelete(id);
+  }
+
+  // Used by the JWT strategies so tokens of deleted users stop working
+  async isActive(id: number): Promise<boolean> {
+    return (await this.usersRepository.countBy({ id })) > 0;
   }
 
   // Used by AuthService to look up a user for login — password is in memory but
